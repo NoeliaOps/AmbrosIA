@@ -30,10 +30,12 @@ export async function GET(
   const ev = quote.events as { name: string; event_date: string; guest_count: number; clients: { name: string; phone: string | null; email: string | null } | null } | null
   const items = [...(quote.quote_line_items ?? [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
+  const { data: org } = await supabase.from("organizations").select("name").single()
   const logoPath = path.join(process.cwd(), "public/brand/logo-artesano-dark.jpg")
 
   const data = {
     logoPath,
+    orgName: org?.name,
     quoteNumber: `${String(quote.version_number ?? 1).padStart(3, "0")}`,
     createdAt: quote.created_at,
     eventName: ev?.name ?? "Sin nombre",

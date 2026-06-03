@@ -30,10 +30,12 @@ export async function GET(
   const ev = contract.events as { name: string; event_date: string; guest_count: number; location: string | null; clients: { name: string; phone: string | null; email: string | null } | null } | null
   const quote = contract.quotes as { total: number } | null
 
+  const { data: org } = await supabase.from("organizations").select("name").single()
   const logoPath = path.join(process.cwd(), "public/brand/logo-artesano-dark.jpg")
 
   const data = {
     logoPath,
+    orgName: org?.name,
     contractNumber: id.slice(-6).toUpperCase(),
     createdAt: contract.created_at,
     signedAt: contract.signed_at,

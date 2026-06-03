@@ -8,7 +8,7 @@ import {
 } from "lucide-react"
 import { formatCurrency, formatDate, formatShortDate } from "@/lib/utils"
 
-export const metadata: Metadata = { title: "Dashboard — Artesano Banquetes" }
+export const metadata: Metadata = { title: "Dashboard" }
 
 const STATUS_CFG: Record<string, { label: string; dot: string; text: string }> = {
   cotizado:       { label: "Cotizado",       dot: "bg-blue-400",    text: "text-blue-400" },

@@ -329,7 +329,7 @@ export function EventList({ events: initial, clients: initialClients, page = 1, 
 
             <div className="space-y-1.5">
               <Label className="font-sans">Lugar</Label>
-              <Input {...register("location")} placeholder="Ej. Hacienda Las Flores, Querétaro" />
+              <Input {...register("location")} placeholder="Ej. Hacienda Las Flores" />
             </div>
 
             <div className="space-y-1.5">

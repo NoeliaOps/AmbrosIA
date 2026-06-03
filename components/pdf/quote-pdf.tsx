@@ -87,6 +87,7 @@ function fmtDate(iso: string) {
 
 export type QuotePDFData = {
   logoPath?: string
+  orgName?: string
   quoteNumber: string
   createdAt: string
   eventName: string
@@ -104,10 +105,11 @@ export type QuotePDFData = {
 }
 
 export function QuotePDF({ data }: { data: QuotePDFData }) {
+  const orgName = data.orgName ?? "Banquetes"
   return (
     <Document
       title={`Cotización — ${data.eventName}`}
-      author="Artesano Banquetes"
+      author={orgName}
       subject="Cotización de servicios de banquetes"
     >
       <Page size="LETTER" style={s.page}>
@@ -116,7 +118,7 @@ export function QuotePDF({ data }: { data: QuotePDFData }) {
           <View>
             {data.logoPath
               ? <PdfImage src={data.logoPath} style={{ height: 28, width: "auto", objectFit: "contain" }} />
-              : <><Text style={s.headerLogo}>Artesano</Text><Text style={s.headerSub}>Banquetes · Querétaro</Text></>
+              : <Text style={s.headerLogo}>{orgName}</Text>
             }
           </View>
           <View>
@@ -199,7 +201,7 @@ export function QuotePDF({ data }: { data: QuotePDFData }) {
 
         {/* Footer */}
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>Artesano Banquetes · Querétaro, México</Text>
+          <Text style={s.footerText}>{orgName}</Text>
           <Text style={s.footerGold}>Gastronomía artesanal para eventos memorables</Text>
           <Text style={s.pageNum} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>

@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     default: "AmbrosIA",
     template: "%s — AmbrosIA",
   },
-  description: "Gestión integral para banqueteras y catering en México",
+  description: "Gestión integral para banqueteras y catering",
   icons: {
     icon: "/brand/ambrosia-favicon.jpg",
     apple: "/brand/ambrosia-touchicon.jpg",

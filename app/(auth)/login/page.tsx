@@ -58,10 +58,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: "var(--void)" }}>
+    <div className="h-dvh flex overflow-hidden" style={{ background: "var(--void)" }}>
 
       {/* ── Left brand panel ─────────────────────────── */}
-      <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] flex-col relative overflow-hidden"
+      <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] flex-col relative overflow-y-auto"
         style={{ background: "var(--void)", borderRight: "1px solid var(--border-dim)" }}>
 
         {/* Subtle grid */}
@@ -129,7 +129,7 @@ export default function LoginPage() {
               maxWidth: "360px",
             }}>
               Cotizaciones, contratos, requisiciones y utilidad real —
-              todo en una herramienta diseñada para banqueteras en México.
+              todo en una herramienta diseñada para banqueteras profesionales.
             </p>
 
             {/* Feature pills */}
@@ -150,13 +150,8 @@ export default function LoginPage() {
           <div style={{
             borderTop: "1px solid var(--border-dim)",
             paddingTop: "1.25rem",
-            display: "flex", justifyContent: "space-between", alignItems: "center",
+            display: "flex", justifyContent: "flex-end", alignItems: "center",
           }}>
-            <p style={{
-              fontFamily: "var(--font-mono), ui-monospace, monospace",
-              fontSize: "0.6rem", letterSpacing: "0.12em",
-              textTransform: "uppercase", color: "var(--text-3)",
-            }}>Querétaro, México</p>
             <p style={{
               fontFamily: "var(--font-mono), ui-monospace, monospace",
               fontSize: "0.6rem", color: "var(--text-3)",
@@ -166,7 +161,7 @@ export default function LoginPage() {
       </div>
 
       {/* ── Right form panel ─────────────────────────── */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 relative"
+      <div className="flex-1 flex items-center justify-center px-6 py-10 overflow-y-auto relative"
         style={{ background: "var(--surface-0)" }}>
 
         {/* Noise */}
@@ -358,7 +353,7 @@ export default function LoginPage() {
             color: "var(--text-3)", textTransform: "uppercase",
             textAlign: "center", marginTop: "1.5rem",
           }}>
-            AmbrosIA · Querétaro MX · {new Date().getFullYear()}
+            AmbrosIA · {new Date().getFullYear()}
           </p>
         </div>
       </div>

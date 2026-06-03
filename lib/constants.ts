@@ -1,8 +1,8 @@
-export const APP_NAME = "Artesano Banquetes"
+export const APP_NAME = "AmbrosIA"
 export const APP_DESCRIPTION = "Sistema de gestión interna"
 
-export const DEFAULT_ORG_NAME = "Artesano Banquetes"
-export const DEFAULT_ORG_SLUG = "artesano"
+export const DEFAULT_ORG_NAME = "Mi Organización"
+export const DEFAULT_ORG_SLUG = "org"
 
 export const EVENT_STATUSES = {
   cotizado:       { label: "Cotizado",       color: "bg-blue-100 text-blue-800" },

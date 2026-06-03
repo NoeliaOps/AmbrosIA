@@ -81,19 +81,6 @@ export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) 
           alt="AmbrosIA"
           style={{ height: "28px", width: "auto", objectFit: "contain" }}
         />
-        <div style={{ marginLeft: "10px" }}>
-          <p style={{
-            fontFamily: "var(--font-mono), ui-monospace, monospace",
-            fontSize: "0.55rem",
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            color: "var(--text-3)",
-            lineHeight: 1.4,
-            marginTop: "1px",
-          }}>
-            Artesano Banquetes
-          </p>
-        </div>
       </div>
 
       {/* ── Demo persona switcher ─────────────────── */}

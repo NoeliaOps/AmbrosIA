@@ -77,6 +77,7 @@ export type ContractClause = { id: string; title: string; content: string }
 
 export type ContractPDFData = {
   logoPath?: string
+  orgName?: string
   contractNumber: string
   createdAt: string
   signedAt?: string | null
@@ -93,10 +94,11 @@ export type ContractPDFData = {
 }
 
 export function ContractPDF({ data }: { data: ContractPDFData }) {
+  const orgName = data.orgName ?? "Banquetes"
   return (
     <Document
       title={`Contrato — ${data.eventName}`}
-      author="Artesano Banquetes"
+      author={orgName}
       subject="Contrato de servicios de banquetes"
     >
       <Page size="LETTER" style={s.page}>
@@ -105,7 +107,7 @@ export function ContractPDF({ data }: { data: ContractPDFData }) {
           <View>
             {data.logoPath
               ? <PdfImage src={data.logoPath} style={{ height: 28, width: "auto", objectFit: "contain" }} />
-              : <><Text style={s.headerLogo}>Artesano</Text><Text style={s.headerSub}>Banquetes · Querétaro</Text></>
+              : <Text style={s.headerLogo}>{orgName}</Text>
             }
           </View>
           <View>
@@ -128,8 +130,7 @@ export function ContractPDF({ data }: { data: ContractPDFData }) {
           <View style={s.partiesRow}>
             <View style={s.partyBox}>
               <Text style={s.partyLabel}>Prestador de servicios</Text>
-              <Text style={s.partyName}>Artesano Banquetes</Text>
-              <Text style={s.partyDetail}>Querétaro, México{"\n"}RFC: ARTB000101XXX</Text>
+              <Text style={s.partyName}>{orgName}</Text>
             </View>
             <View style={s.partyBox}>
               <Text style={s.partyLabel}>Cliente</Text>
@@ -175,7 +176,7 @@ export function ContractPDF({ data }: { data: ContractPDFData }) {
           <View style={s.sigsRow}>
             <View style={s.sigBox}>
               <Text style={s.sigLabel}>Firma del prestador de servicios</Text>
-              <Text style={s.sigName}>Artesano Banquetes</Text>
+              <Text style={s.sigName}>{orgName}</Text>
             </View>
             <View style={s.sigBox}>
               <Text style={s.sigLabel}>Firma del cliente</Text>
@@ -186,7 +187,7 @@ export function ContractPDF({ data }: { data: ContractPDFData }) {
 
         {/* Footer */}
         <View style={s.footer} fixed>
-          <Text style={s.footerText}>Artesano Banquetes · Querétaro, México</Text>
+          <Text style={s.footerText}>{orgName}</Text>
           <Text style={s.footerGold}>Este documento tiene validez contractual con firma de ambas partes</Text>
           <Text style={s.pageNum} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
         </View>

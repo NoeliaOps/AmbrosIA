@@ -4,7 +4,7 @@ import { Resend } from "resend"
 import { createClient } from "@/lib/supabase/server"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM   = process.env.EMAIL_FROM ?? "Artesano Banquetes <cotizaciones@artesanobanquetes.mx>"
+const FROM   = process.env.EMAIL_FROM ?? "noreply@ambrosia-eta.vercel.app"
 
 function fmt(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n)
@@ -22,14 +22,17 @@ export async function sendQuoteEmail(quoteId: string): Promise<{ error: string |
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "No autenticado" }
 
-  const { data: quote } = await supabase
-    .from("quotes")
-    .select(`
-      id, version_number, total, subtotal, discount_amount, notes, created_at,
-      events(name, event_date, guest_count, clients(name, email))
-    `)
-    .eq("id", quoteId)
-    .single()
+  const [{ data: quote }, { data: org }] = await Promise.all([
+    supabase
+      .from("quotes")
+      .select(`
+        id, version_number, total, subtotal, discount_amount, notes, created_at,
+        events(name, event_date, guest_count, clients(name, email))
+      `)
+      .eq("id", quoteId)
+      .single(),
+    supabase.from("organizations").select("name").single(),
+  ])
 
   if (!quote) return { error: "Cotización no encontrada" }
 
@@ -37,6 +40,7 @@ export async function sendQuoteEmail(quoteId: string): Promise<{ error: string |
   const client = ev?.clients
   if (!client?.email) return { error: "El cliente no tiene correo electrónico registrado." }
 
+  const orgName = org?.name ?? "Servicios de banquetes"
   const pdfUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://ambrosia-eta.vercel.app"}/api/pdf/quote/${quoteId}`
 
   const html = `
@@ -49,8 +53,7 @@ export async function sendQuoteEmail(quoteId: string): Promise<{ error: string |
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:6px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
         <!-- Header -->
         <tr><td style="background:#0F0F0F;padding:24px 32px;">
-          <p style="margin:0;font-family:Georgia,serif;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:0.5px;">Artesano</p>
-          <p style="margin:4px 0 0;font-family:Arial,sans-serif;font-size:11px;color:#C6A56B;letter-spacing:2px;text-transform:uppercase;">Banquetes · Querétaro</p>
+          <p style="margin:0;font-family:Georgia,serif;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:0.5px;">${orgName}</p>
         </td></tr>
         <!-- Gold line -->
         <tr><td style="height:3px;background:#C6A56B;"></td></tr>
@@ -97,7 +100,7 @@ export async function sendQuoteEmail(quoteId: string): Promise<{ error: string |
         <!-- Footer -->
         <tr><td style="background:#F3F0E9;padding:16px 32px;border-top:1px solid #D8D3C8;">
           <p style="margin:0;font-family:Arial,sans-serif;font-size:11px;color:#6B6660;text-align:center;">
-            Artesano Banquetes · Querétaro, México · <span style="color:#C6A56B;">Gastronomía artesanal para eventos memorables</span>
+            ${orgName} · <span style="color:#C6A56B;">Gastronomía artesanal para eventos memorables</span>
           </p>
         </td></tr>
       </table>
@@ -109,7 +112,7 @@ export async function sendQuoteEmail(quoteId: string): Promise<{ error: string |
   const { error } = await resend.emails.send({
     from: FROM,
     to:   client.email,
-    subject: `Cotización — ${ev?.name ?? "Evento"} | Artesano Banquetes`,
+    subject: `Cotización — ${ev?.name ?? "Evento"} | ${orgName}`,
     html,
   })
 
@@ -126,15 +129,18 @@ export async function sendContractEmail(contractId: string): Promise<{ error: st
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "No autenticado" }
 
-  const { data: contract } = await supabase
-    .from("contracts")
-    .select(`
-      id, created_at,
-      quotes(total),
-      events(name, event_date, clients(name, email))
-    `)
-    .eq("id", contractId)
-    .single()
+  const [{ data: contract }, { data: org }] = await Promise.all([
+    supabase
+      .from("contracts")
+      .select(`
+        id, created_at,
+        quotes(total),
+        events(name, event_date, clients(name, email))
+      `)
+      .eq("id", contractId)
+      .single(),
+    supabase.from("organizations").select("name").single(),
+  ])
 
   if (!contract) return { error: "Contrato no encontrado" }
 
@@ -142,6 +148,7 @@ export async function sendContractEmail(contractId: string): Promise<{ error: st
   const client = ev?.clients
   if (!client?.email) return { error: "El cliente no tiene correo electrónico registrado." }
 
+  const orgName = org?.name ?? "Servicios de banquetes"
   const pdfUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://ambrosia-eta.vercel.app"}/api/pdf/contract/${contractId}`
   const total  = (contract.quotes as { total: number } | null)?.total ?? 0
 
@@ -154,8 +161,7 @@ export async function sendContractEmail(contractId: string): Promise<{ error: st
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:6px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
         <tr><td style="background:#0F0F0F;padding:24px 32px;">
-          <p style="margin:0;font-family:Georgia,serif;font-size:22px;font-weight:700;color:#ffffff;">Artesano</p>
-          <p style="margin:4px 0 0;font-family:Arial,sans-serif;font-size:11px;color:#C6A56B;letter-spacing:2px;text-transform:uppercase;">Banquetes · Querétaro</p>
+          <p style="margin:0;font-family:Georgia,serif;font-size:22px;font-weight:700;color:#ffffff;">${orgName}</p>
         </td></tr>
         <tr><td style="height:3px;background:#C6A56B;"></td></tr>
         <tr><td style="padding:32px;">
@@ -188,7 +194,7 @@ export async function sendContractEmail(contractId: string): Promise<{ error: st
         </td></tr>
         <tr><td style="background:#F3F0E9;padding:16px 32px;border-top:1px solid #D8D3C8;">
           <p style="margin:0;font-family:Arial,sans-serif;font-size:11px;color:#6B6660;text-align:center;">
-            Artesano Banquetes · Querétaro, México · <span style="color:#C6A56B;">Gastronomía artesanal para eventos memorables</span>
+            ${orgName} · <span style="color:#C6A56B;">Gastronomía artesanal para eventos memorables</span>
           </p>
         </td></tr>
       </table>
@@ -200,7 +206,7 @@ export async function sendContractEmail(contractId: string): Promise<{ error: st
   const { error } = await resend.emails.send({
     from: FROM,
     to:   client.email,
-    subject: `Contrato de servicios — ${ev?.name ?? "Evento"} | Artesano Banquetes`,
+    subject: `Contrato de servicios — ${ev?.name ?? "Evento"} | ${orgName}`,
     html,
   })
 
