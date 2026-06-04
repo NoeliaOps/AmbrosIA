@@ -1,22 +1,25 @@
 import type { Metadata } from "next"
-import { Fraunces, Instrument_Sans, DM_Mono } from "next/font/google"
+import { Playfair_Display, Karla, DM_Mono } from "next/font/google"
 import { Toaster } from "sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import "./globals.css"
 
-const fraunces = Fraunces({
+// Display serif — Playfair Display para encabezados h1/h2 únicamente
+const playfairDisplay = Playfair_Display({
   variable: "--font-display",
   subsets: ["latin", "latin-ext"],
-  weight: ["300", "400", "500", "600", "700", "900"],
+  weight: ["400", "500", "600", "700", "800"],
   style: ["normal", "italic"],
 })
 
-const instrumentSans = Instrument_Sans({
+// Humanist sans-serif — Karla para todo el chrome de UI
+const karla = Karla({
   variable: "--font-sans",
   subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600"],
+  weight: ["300", "400", "500", "600", "700"],
 })
 
+// Monospace — DM Mono exclusivamente para datos numéricos
 const dmMono = DM_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
@@ -46,7 +49,7 @@ export default function RootLayout({
   return (
     <html
       lang="es-MX"
-      className={`${fraunces.variable} ${instrumentSans.variable} ${dmMono.variable} h-full antialiased`}
+      className={`${playfairDisplay.variable} ${karla.variable} ${dmMono.variable} h-full antialiased`}
     >
       <body className="h-full">
         <TooltipProvider delay={300}>
