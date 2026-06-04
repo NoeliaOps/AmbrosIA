@@ -1,25 +1,30 @@
 import type { Metadata } from "next"
+import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/layout/page-header"
-import { ModuleComingSoon } from "@/components/layout/module-coming-soon"
-import { Warehouse } from "lucide-react"
+import { InventoryClient, type InventoryItem, type IngredientOption } from "./_components/inventory-client"
 
 export const metadata: Metadata = { title: "Inventario" }
 
-export default function InventarioPage() {
+export default async function InventarioPage() {
+  const supabase = await createClient()
+
+  const [{ data: rawItems }, { data: ingredients }] = await Promise.all([
+    supabase
+      .from("inventory_items")
+      .select("id, quantity, min_quantity, notes, updated_at, ingredients(id, name, unit, category, current_price)")
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("ingredients")
+      .select("id, name, unit, category, current_price")
+      .order("name"),
+  ])
+
+  const items = (rawItems ?? []) as unknown as InventoryItem[]
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Inventario" description="Control básico de almacén e insumos en stock." />
-      <ModuleComingSoon
-        accent="#6B4A2F"
-        icon={Warehouse}
-        headline="Lleva el stock de tu almacén al día"
-        capabilities={[
-          "Existencias por insumo, con su unidad y costo actual",
-          "Alertas cuando un insumo baja de su mínimo",
-          "Descuento automático de existencias al registrar compras y eventos",
-        ]}
-        cta={{ label: "Ver ingredientes", href: "/catalogos/ingredientes" }}
-      />
+      <PageHeader title="Inventario" description="Control de existencias de insumos en almacén." />
+      <InventoryClient items={items} ingredients={(ingredients ?? []) as IngredientOption[]} />
     </div>
   )
 }

@@ -1,25 +1,24 @@
 import type { Metadata } from "next"
+import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/layout/page-header"
-import { ModuleComingSoon } from "@/components/layout/module-coming-soon"
-import { LayoutTemplate } from "lucide-react"
+import { TemplateClient, type Template } from "./_components/template-client"
 
 export const metadata: Metadata = { title: "Plantillas" }
 
-export default function PlantillasPage() {
+export default async function PlantillasPage() {
+  const supabase = await createClient()
+
+  const { data } = await supabase
+    .from("quote_templates")
+    .select("id, name, event_type, description, price_per_guest, is_active, quote_template_items(id, description, quantity, unit_cost, sort_order)")
+    .order("name")
+
+  const templates = (data ?? []) as unknown as Template[]
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Plantillas" description="Menús y paquetes reutilizables para cotizar rápido." />
-      <ModuleComingSoon
-        accent="#4C4F8A"
-        icon={LayoutTemplate}
-        headline="Cotiza en segundos con paquetes reutilizables"
-        capabilities={[
-          "Guarda combinaciones de platillos como paquetes con precio por persona",
-          "Aplica una plantilla a una cotización con un solo clic",
-          "Mantén versiones por temporada o tipo de evento",
-        ]}
-        cta={{ label: "Ver menús", href: "/catalogos/menus" }}
-      />
+      <PageHeader title="Plantillas" description="Paquetes de cotización reutilizables para cotizar rápido." />
+      <TemplateClient templates={templates} />
     </div>
   )
 }

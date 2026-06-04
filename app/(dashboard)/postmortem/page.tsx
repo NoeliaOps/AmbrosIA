@@ -1,25 +1,26 @@
 import type { Metadata } from "next"
+import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/layout/page-header"
-import { ModuleComingSoon } from "@/components/layout/module-coming-soon"
-import { MessageSquare } from "lucide-react"
+import { PostmortemClient, type EventWithPostmortem } from "./_components/postmortem-client"
 
 export const metadata: Metadata = { title: "Post-mortem" }
 
-export default function PostmortemPage() {
+export default async function PostmortemPage() {
+  const supabase = await createClient()
+
+  // Eventos completados (los candidatos a retrospectiva) + su post-mortem si existe
+  const { data } = await supabase
+    .from("events")
+    .select("id, name, event_date, guest_count, clients(name), event_postmortems(id, rating, went_well, to_improve, lessons, updated_at)")
+    .eq("status", "completado")
+    .order("event_date", { ascending: false })
+
+  const events = (data ?? []) as unknown as EventWithPostmortem[]
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Post-mortem" description="Notas y lecciones aprendidas por evento." />
-      <ModuleComingSoon
-        accent="#3C3C3C"
-        icon={MessageSquare}
-        headline="Aprende de cada evento para mejorar el siguiente"
-        capabilities={[
-          "Registra qué salió bien y qué mejorar después de cada evento",
-          "Compara lo estimado contra lo real (costos, personal, tiempos)",
-          "Convierte las lecciones en notas accionables para próximos eventos",
-        ]}
-        cta={{ label: "Ver eventos", href: "/eventos" }}
-      />
+      <PageHeader title="Post-mortem" description="Retrospectiva y lecciones aprendidas de los eventos completados." />
+      <PostmortemClient events={events} />
     </div>
   )
 }

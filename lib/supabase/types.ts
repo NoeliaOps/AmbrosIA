@@ -366,6 +366,54 @@ export type Database = {
           }
         ]
       }
+      inventory_items: {
+        Row: {
+          created_at: string
+          id: string
+          ingredient_id: string
+          min_quantity: number
+          notes: string | null
+          org_id: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ingredient_id: string
+          min_quantity?: number
+          notes?: string | null
+          org_id: string
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ingredient_id?: string
+          min_quantity?: number
+          notes?: string | null
+          org_id?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_dishes: {
         Row: {
           id: string
@@ -601,6 +649,85 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           }
+        ]
+      }
+      quote_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_type: string | null
+          id: string
+          is_active: boolean
+          name: string
+          org_id: string
+          price_per_guest: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_type?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          org_id: string
+          price_per_guest?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_type?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          org_id?: string
+          price_per_guest?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_template_items: {
+        Row: {
+          description: string
+          id: string
+          quantity: number
+          sort_order: number
+          template_id: string
+          unit_cost: number
+        }
+        Insert: {
+          description: string
+          id?: string
+          quantity?: number
+          sort_order?: number
+          template_id: string
+          unit_cost?: number
+        }
+        Update: {
+          description?: string
+          id?: string
+          quantity?: number
+          sort_order?: number
+          template_id?: string
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "quote_templates"
+            referencedColumns: ["id"]
+          },
         ]
       }
       quotes: {
@@ -1086,6 +1213,57 @@ export type Database = {
             referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
           }
+        ]
+      }
+      event_postmortems: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          lessons: string | null
+          org_id: string
+          rating: number | null
+          to_improve: string | null
+          updated_at: string
+          went_well: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          lessons?: string | null
+          org_id: string
+          rating?: number | null
+          to_improve?: string | null
+          updated_at?: string
+          went_well?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          lessons?: string | null
+          org_id?: string
+          rating?: number | null
+          to_improve?: string | null
+          updated_at?: string
+          went_well?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_postmortems_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_postmortems_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       event_staff_assignments: {
