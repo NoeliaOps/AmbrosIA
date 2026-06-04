@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Loader2, Eye, EyeOff } from "lucide-react"
+import { Loader2, Eye, EyeOff, ArrowRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,27 +21,40 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>
 const PERSONA_ORDER: DemoPersona[] = ["admin", "coordinadora", "chef"]
 
-// ── Colores locales del login (sin depender de CSS vars para máxima fiabilidad) ──
+// ── Paleta local "Pizarra & Champagne" (sin depender de CSS vars al render crítico) ──
 const C = {
-  slateDark:    "#2A2D35",   // sidebar pizarra
-  slateDeep:    "#1E2128",   // más oscuro para acentos
-  slateAccent:  "#363A46",   // hover en panel oscuro
-  champagne:    "#C4963B",   // dorado champagne — solo decorativo
-  champagneTxt: "#8B6D24",   // champagne apto para texto (4.54:1)
-  charcoal:     "#2D2926",   // botón CTA
-  charcoalHov:  "#1A1714",   // hover CTA
-  white:        "#FFFFFF",
-  bg:           "#FFFFFF",   // fondo formulario
-  text1:        "#1A1A1A",
-  text2:        "#4B5563",
-  text3:        "#9CA3AF",
-  border:       "#E5E7EB",
-  inputBg:      "#F9FAFB",
+  slate:      "#2A2D35",  // pizarra (panel de marca)
+  slateDeep:  "#1F222A",  // base del degradado
+  champagne:  "#C4963B",  // dorado champagne — solo decorativo
+  champagneT: "#8B6D24",  // champagne apto para texto (4.54:1)
+  charcoal:   "#2D2926",  // CTA
+  charcoalH:  "#1A1714",  // CTA hover
+  white:      "#FFFFFF",
+  text1:      "#1A1A1A",
+  text2:      "#4B5563",
+  text3:      "#9CA3AF",
+  border:     "#E5E7EB",
+  inputBg:    "#F9FAFB",
+  ink:        "rgb(232 234 240",  // texto sobre pizarra (cerrar con "/ a)")
+}
+
+const serif = "var(--font-display), Georgia, serif"
+const sans  = "var(--font-sans), system-ui, sans-serif"
+const mono  = "var(--font-mono), ui-monospace, monospace"
+
+function Wordmark({ size = 1.5, onDark }: { size?: number; onDark?: boolean }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "baseline", userSelect: "none", lineHeight: 1 }}>
+      <span style={{ fontFamily: serif, fontSize: `${size}rem`, fontWeight: 700, color: C.champagne, letterSpacing: "-0.02em" }}>A</span>
+      <span style={{ fontFamily: serif, fontSize: `${size * 0.64}rem`, fontWeight: 400, color: onDark ? `${C.ink} / 0.6)` : C.text2, letterSpacing: "0.04em" }}>mbros</span>
+      <span style={{ fontFamily: serif, fontSize: `${size * 0.64}rem`, fontWeight: 700, color: C.champagne, letterSpacing: "0.04em" }}>IA</span>
+    </span>
+  )
 }
 
 export default function LoginPage() {
   const router = useRouter()
-  const [loading, setLoading]   = useState(false)
+  const [loading, setLoading] = useState(false)
   const [demoLoading, setDemoLoading] = useState<DemoPersona | null>(null)
   const [showPass, setShowPass] = useState(false)
   const [ctaHover, setCtaHover] = useState(false)
@@ -73,367 +86,232 @@ export default function LoginPage() {
   const busy = loading || !!demoLoading
 
   return (
-    /* ── Contenedor raíz: flex, min-h-dvh garantiza que llene pantalla ── */
-    <div style={{ display: "flex", minHeight: "100dvh", background: C.slateDark }}>
-
-      {/* ════════════════════════════════════════════════════════
-          PANEL IZQUIERDO — Brand story (pizarra oscuro)
-          flex-shrink-0 + width explícito = nunca se encoge
-          ════════════════════════════════════════════════════════ */}
-      <div
+    /* ──────────────────────────────────────────────────────────────
+       RAÍZ — grid a pantalla completa. Cada celda ESTIRA a 100% de
+       alto y ancho por defecto en grid → imposible que quede "en cuadro".
+       Móvil: 1 columna. Desktop: pizarra (más ancha) + formulario.
+       ────────────────────────────────────────────────────────────── */
+    <main
+      style={{ minHeight: "100dvh", width: "100%", display: "grid" }}
+      className="grid-cols-1 lg:grid-cols-[1.15fr_minmax(0,520px)]"
+    >
+      {/* ═══════════════ PANEL DE MARCA (pizarra) ═══════════════ */}
+      <section
+        className="hidden lg:block"
         style={{
-          flexShrink: 0,
-          width: "54%",
-          background: C.slateDark,
-          display: "flex",
-          flexDirection: "column",
           position: "relative",
           overflow: "hidden",
+          background: `linear-gradient(150deg, ${C.slate} 0%, ${C.slateDeep} 100%)`,
         }}
-        className="hidden lg:flex"
       >
-        {/* Patrón de líneas — retícula muy sutil */}
+        {/* Retícula muy sutil */}
         <div style={{
           position: "absolute", inset: 0, pointerEvents: "none",
-          backgroundImage: `linear-gradient(rgb(255 255 255 / 0.02) 1px, transparent 1px),
-                            linear-gradient(90deg, rgb(255 255 255 / 0.02) 1px, transparent 1px)`,
-          backgroundSize: "48px 48px",
+          backgroundImage: `linear-gradient(rgb(255 255 255 / 0.022) 1px, transparent 1px),
+                            linear-gradient(90deg, rgb(255 255 255 / 0.022) 1px, transparent 1px)`,
+          backgroundSize: "56px 56px",
+          maskImage: "radial-gradient(ellipse 90% 80% at 40% 35%, #000 40%, transparent 100%)",
+        }} />
+        {/* Glow champagne superior */}
+        <div style={{
+          position: "absolute", top: "-18%", right: "-12%",
+          width: "560px", height: "560px", pointerEvents: "none", borderRadius: "50%",
+          background: "radial-gradient(circle at center, rgb(196 150 59 / 0.16) 0%, transparent 62%)",
+        }} />
+        {/* Glow inferior */}
+        <div style={{
+          position: "absolute", bottom: "-14%", left: "-10%",
+          width: "400px", height: "400px", pointerEvents: "none", borderRadius: "50%",
+          background: "radial-gradient(circle at center, rgb(196 150 59 / 0.06) 0%, transparent 60%)",
         }} />
 
-        {/* Glow champagne superior derecho */}
+        {/* Contenido del panel */}
         <div style={{
-          position: "absolute", top: "-15%", right: "-10%",
-          width: "480px", height: "480px", pointerEvents: "none",
-          background: `radial-gradient(ellipse at center, rgb(196 150 59 / 0.14) 0%, transparent 65%)`,
-          borderRadius: "50%",
-        }} />
-
-        {/* Glow inferior izquierdo */}
-        <div style={{
-          position: "absolute", bottom: "0%", left: "-8%",
-          width: "320px", height: "320px", pointerEvents: "none",
-          background: `radial-gradient(ellipse at center, rgb(196 150 59 / 0.07) 0%, transparent 65%)`,
-          borderRadius: "50%",
-        }} />
-
-        {/* Contenido */}
-        <div style={{
-          position: "relative", zIndex: 1,
+          position: "relative", zIndex: 1, height: "100%",
           display: "flex", flexDirection: "column",
-          height: "100%", padding: "3rem 3.5rem",
+          padding: "clamp(2.5rem, 4vw, 4rem)",
         }}>
-          {/* Wordmark */}
-          <div style={{ display: "flex", alignItems: "baseline", userSelect: "none" }}>
-            <span style={{
-              fontFamily: "var(--font-display), Georgia, serif",
-              fontSize: "1.5rem", fontWeight: 700,
-              color: C.champagne, letterSpacing: "-0.02em",
-            }}>A</span>
-            <span style={{
-              fontFamily: "var(--font-display), Georgia, serif",
-              fontSize: "0.95rem", fontWeight: 400,
-              color: "rgb(232 234 240 / 0.55)", letterSpacing: "0.04em",
-            }}>mbros</span>
-            <span style={{
-              fontFamily: "var(--font-display), Georgia, serif",
-              fontSize: "0.95rem", fontWeight: 700,
-              color: C.champagne, letterSpacing: "0.04em",
-            }}>IA</span>
-          </div>
+          <Wordmark size={1.5} onDark />
 
-          {/* Hero */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", maxWidth: "400px" }}>
-
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", maxWidth: "32rem" }}>
             <p style={{
-              fontFamily: "var(--font-sans), system-ui, sans-serif",
-              fontSize: "0.6875rem", fontWeight: 500,
-              letterSpacing: "0.22em", textTransform: "uppercase",
-              color: C.champagne, marginBottom: "1.5rem",
+              fontFamily: sans, fontSize: "0.6875rem", fontWeight: 600,
+              letterSpacing: "0.24em", textTransform: "uppercase",
+              color: C.champagne, marginBottom: "1.75rem",
             }}>
               Gestión de banquetes
             </p>
 
             <h1 style={{
-              fontFamily: "var(--font-display), Georgia, serif",
-              fontSize: "clamp(2.25rem, 3.2vw, 3.125rem)",
-              fontWeight: 700, lineHeight: 1.1,
-              letterSpacing: "-0.025em",
-              color: "rgb(232 234 240 / 0.95)",
-              marginBottom: "1.5rem",
+              fontFamily: serif, fontWeight: 700,
+              fontSize: "clamp(2.5rem, 3.6vw, 3.5rem)", lineHeight: 1.08,
+              letterSpacing: "-0.025em", color: `${C.ink} / 0.96)`,
+              marginBottom: "1.75rem",
             }}>
               Para quienes<br />
               convierten una fecha<br />
-              <em style={{ color: C.champagne, fontStyle: "italic" }}>en un recuerdo.</em>
+              <em style={{ fontStyle: "italic", color: C.champagne }}>en un recuerdo.</em>
             </h1>
 
-            {/* Línea divisora champagne */}
-            <div style={{
-              width: "3rem", height: "1px",
-              background: C.champagne, opacity: 0.5,
-              marginBottom: "1.5rem",
-            }} />
+            <div style={{ width: "3.25rem", height: "2px", background: C.champagne, opacity: 0.55, marginBottom: "1.75rem" }} />
 
             <p style={{
-              fontFamily: "var(--font-sans), system-ui, sans-serif",
-              fontSize: "0.9375rem", lineHeight: 1.7,
-              color: "rgb(232 234 240 / 0.45)",
-              marginBottom: "2.5rem",
+              fontFamily: sans, fontSize: "1rem", lineHeight: 1.7,
+              color: `${C.ink} / 0.5)`, marginBottom: "2.75rem", maxWidth: "26rem",
             }}>
-              Control de recetas, costos y eventos en una sola herramienta.
+              Recetas, costos, cotizaciones y calendario de eventos. Todo el banquete bajo control, en una sola herramienta.
             </p>
 
-            {/* Features 2×2 */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem 1.5rem", maxWidth: "26rem" }}>
               {[
-                ["Recetas & costos",  "Control exacto de ingredientes"],
-                ["Cotizaciones PDF",  "Listas en segundos"],
-                ["Calendario",        "Todos los eventos a la vista"],
-                ["Utilidad real",     "Saber qué deja cada evento"],
+                ["Recetas & costos", "Control exacto de cada ingrediente"],
+                ["Cotizaciones PDF", "Listas para enviar en segundos"],
+                ["Calendario", "Todos los eventos del mes a la vista"],
+                ["Utilidad real", "Cuánto deja cada evento"],
               ].map(([title, sub]) => (
-                <div key={title} style={{
-                  borderLeft: "2px solid rgb(196 150 59 / 0.35)",
-                  paddingLeft: "0.875rem",
-                }}>
-                  <p style={{
-                    fontFamily: "var(--font-sans), system-ui, sans-serif",
-                    fontSize: "0.8125rem", fontWeight: 600,
-                    color: "rgb(232 234 240 / 0.8)",
-                    marginBottom: "0.2rem",
-                  }}>{title}</p>
-                  <p style={{
-                    fontFamily: "var(--font-sans), system-ui, sans-serif",
-                    fontSize: "0.7rem",
-                    color: "rgb(232 234 240 / 0.35)",
-                  }}>{sub}</p>
+                <div key={title} style={{ borderLeft: "2px solid rgb(196 150 59 / 0.4)", paddingLeft: "0.875rem" }}>
+                  <p style={{ fontFamily: sans, fontSize: "0.8125rem", fontWeight: 600, color: `${C.ink} / 0.85)`, marginBottom: "0.2rem" }}>{title}</p>
+                  <p style={{ fontFamily: sans, fontSize: "0.75rem", lineHeight: 1.4, color: `${C.ink} / 0.4)` }}>{sub}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <p style={{
-            fontFamily: "var(--font-mono), ui-monospace, monospace",
-            fontSize: "0.6rem", letterSpacing: "0.12em",
-            color: "rgb(232 234 240 / 0.18)",
-          }}>© {year} AmbrosIA</p>
+          <p style={{ fontFamily: mono, fontSize: "0.625rem", letterSpacing: "0.12em", color: `${C.ink} / 0.22)` }}>
+            © {year} AmbrosIA
+          </p>
         </div>
-      </div>
+      </section>
 
-      {/* ════════════════════════════════════════════════════════
-          PANEL DERECHO — Formulario limpio sobre blanco
-          flex: 1 + min-h-dvh garantiza que llene el espacio
-          ════════════════════════════════════════════════════════ */}
-      <div style={{
-        flex: 1,
-        background: C.bg,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "2.5rem 2rem",
-        minHeight: "100dvh",
-        overflowY: "auto",
+      {/* ═══════════════ PANEL DE FORMULARIO (blanco) ═══════════════ */}
+      <section style={{
+        position: "relative",
+        background: C.white,
+        display: "flex", flexDirection: "column",
+        justifyContent: "center", alignItems: "center",
+        padding: "clamp(2rem, 5vw, 3rem) 1.5rem",
       }}>
-        {/* Logo mobile */}
-        <div style={{
-          position: "absolute", top: "1.5rem", left: "1.5rem",
-          display: "flex", alignItems: "baseline",
-        }} className="lg:hidden">
-          <span style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "1.375rem", fontWeight: 700, color: C.champagne }}>A</span>
-          <span style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "0.875rem", fontWeight: 400, color: C.text2 }}>mbros</span>
-          <span style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "0.875rem", fontWeight: 700, color: C.champagne }}>IA</span>
+        {/* Wordmark sólo en móvil (dentro del panel, NO escapa al fondo) */}
+        <div className="lg:hidden" style={{ position: "absolute", top: "1.75rem", left: "1.75rem" }}>
+          <Wordmark size={1.375} />
         </div>
 
-        <div style={{ width: "100%", maxWidth: "22rem" }}>
-
-          {/* Heading */}
-          <div style={{ marginBottom: "2.25rem" }}>
-            <h2 style={{
-              fontFamily: "var(--font-display), Georgia, serif",
-              fontSize: "1.875rem", fontWeight: 600,
-              color: C.text1, letterSpacing: "-0.02em",
-              marginBottom: "0.375rem",
-            }}>Iniciar sesión</h2>
-            <p style={{
-              fontFamily: "var(--font-sans), system-ui, sans-serif",
-              fontSize: "0.875rem", color: C.text3,
-            }}>Accede a tu cuenta</p>
-            {/* Línea champagne decorativa */}
-            <div style={{
-              marginTop: "1rem", height: "1px", width: "2.5rem",
-              background: C.champagne, opacity: 0.6,
-            }} />
+        <div style={{ width: "100%", maxWidth: "23rem" }}>
+          <div style={{ marginBottom: "2rem" }}>
+            <h2 style={{ fontFamily: serif, fontSize: "1.875rem", fontWeight: 600, color: C.text1, letterSpacing: "-0.02em", marginBottom: "0.375rem" }}>
+              Bienvenido de nuevo
+            </h2>
+            <p style={{ fontFamily: sans, fontSize: "0.9375rem", color: C.text3 }}>
+              Inicia sesión para continuar
+            </p>
+            <div style={{ marginTop: "1.125rem", height: "2px", width: "2.5rem", background: C.champagne, opacity: 0.6 }} />
           </div>
 
-          {/* Formulario — directo sobre la superficie, sin card */}
           <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-
             <div>
-              <Label htmlFor="email" style={{
-                fontFamily: "var(--font-sans), system-ui, sans-serif",
-                fontSize: "0.8125rem", fontWeight: 600, color: C.text1,
-                display: "block", marginBottom: "0.5rem",
-              }}>Correo electrónico</Label>
+              <Label htmlFor="email" style={{ fontFamily: sans, fontSize: "0.8125rem", fontWeight: 600, color: C.text1, display: "block", marginBottom: "0.5rem" }}>
+                Correo electrónico
+              </Label>
               <Input
-                id="email" type="email"
-                placeholder="correo@empresa.com"
-                autoComplete="email"
+                id="email" type="email" placeholder="correo@empresa.com" autoComplete="email"
                 {...register("email")}
                 style={{
-                  height: "2.75rem",
-                  background: C.inputBg,
+                  height: "2.875rem", background: C.inputBg,
                   borderColor: errors.email ? "#FCA5A5" : C.border,
-                  color: C.text1, fontSize: "0.9375rem",
-                  borderRadius: "6px",
+                  color: C.text1, fontSize: "0.9375rem", borderRadius: "8px",
                 }}
               />
-              {errors.email && (
-                <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.75rem", color: "#991B1B", marginTop: "0.375rem" }}>
-                  {errors.email.message}
-                </p>
-              )}
+              {errors.email && <p style={{ fontFamily: sans, fontSize: "0.75rem", color: "#991B1B", marginTop: "0.375rem" }}>{errors.email.message}</p>}
             </div>
 
             <div>
-              <Label htmlFor="password" style={{
-                fontFamily: "var(--font-sans), system-ui, sans-serif",
-                fontSize: "0.8125rem", fontWeight: 600, color: C.text1,
-                display: "block", marginBottom: "0.5rem",
-              }}>Contraseña</Label>
+              <Label htmlFor="password" style={{ fontFamily: sans, fontSize: "0.8125rem", fontWeight: 600, color: C.text1, display: "block", marginBottom: "0.5rem" }}>
+                Contraseña
+              </Label>
               <div style={{ position: "relative" }}>
                 <Input
-                  id="password"
-                  type={showPass ? "text" : "password"}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
+                  id="password" type={showPass ? "text" : "password"} placeholder="••••••••" autoComplete="current-password"
                   {...register("password")}
                   style={{
-                    height: "2.75rem",
-                    background: C.inputBg,
+                    height: "2.875rem", background: C.inputBg,
                     borderColor: errors.password ? "#FCA5A5" : C.border,
-                    color: C.text1, fontSize: "0.9375rem",
-                    borderRadius: "6px",
-                    paddingRight: "3rem",
+                    color: C.text1, fontSize: "0.9375rem", borderRadius: "8px", paddingRight: "3rem",
                   }}
                 />
                 <button
-                  type="button" tabIndex={-1}
+                  type="button" tabIndex={-1} aria-label={showPass ? "Ocultar contraseña" : "Mostrar contraseña"}
                   onClick={() => setShowPass(v => !v)}
-                  style={{
-                    position: "absolute", right: "0.875rem", top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none", border: "none", cursor: "pointer",
-                    color: C.text3, padding: "0.25rem",
-                  }}
+                  style={{ position: "absolute", right: "0.875rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: C.text3, padding: "0.25rem", display: "inline-flex" }}
                 >
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {errors.password && (
-                <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.75rem", color: "#991B1B", marginTop: "0.375rem" }}>
-                  {errors.password.message}
-                </p>
-              )}
+              {errors.password && <p style={{ fontFamily: sans, fontSize: "0.75rem", color: "#991B1B", marginTop: "0.375rem" }}>{errors.password.message}</p>}
             </div>
 
             <Button
-              type="submit"
-              disabled={busy}
-              onMouseEnter={() => setCtaHover(true)}
-              onMouseLeave={() => setCtaHover(false)}
+              type="submit" disabled={busy}
+              onMouseEnter={() => setCtaHover(true)} onMouseLeave={() => setCtaHover(false)}
               style={{
                 height: "2.875rem",
-                background: busy ? C.border : (ctaHover ? C.charcoalHov : C.charcoal),
+                background: busy ? C.border : (ctaHover ? C.charcoalH : C.charcoal),
                 color: busy ? C.text3 : C.white,
-                border: "none", borderRadius: "6px",
-                fontFamily: "var(--font-sans), system-ui, sans-serif",
-                fontSize: "0.9375rem", fontWeight: 600,
-                letterSpacing: "0.01em",
+                border: "none", borderRadius: "8px",
+                fontFamily: sans, fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "0.01em",
                 cursor: busy ? "not-allowed" : "pointer",
-                transition: "background 150ms ease",
-                marginTop: "0.25rem",
+                transition: "background 150ms ease", marginTop: "0.25rem",
               }}
             >
-              {loading
-                ? <><Loader2 size={15} className="mr-2 animate-spin" />Entrando…</>
-                : "Entrar"}
+              {loading ? <><Loader2 size={15} className="mr-2 animate-spin" />Entrando…</> : "Entrar"}
             </Button>
           </form>
 
-          {/* Separador demo */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.875rem", margin: "1.75rem 0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.875rem", margin: "1.75rem 0 1.25rem" }}>
             <div style={{ flex: 1, height: "1px", background: C.border }} />
-            <span style={{
-              fontFamily: "var(--font-sans), system-ui, sans-serif",
-              fontSize: "0.6875rem", fontWeight: 500,
-              letterSpacing: "0.14em", textTransform: "uppercase", color: C.text3,
-            }}>demo</span>
+            <span style={{ fontFamily: sans, fontSize: "0.6875rem", fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: C.text3 }}>
+              o explora la demo
+            </span>
             <div style={{ flex: 1, height: "1px", background: C.border }} />
           </div>
 
-          {/* Acceso demo por rol */}
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {PERSONA_ORDER.map((key) => {
               const p = DEMO_PERSONAS[key]
               const isLoading = demoLoading === key
               return (
                 <button
-                  key={key}
-                  onClick={() => handleEnterDemo(key)}
-                  disabled={busy}
+                  key={key} onClick={() => handleEnterDemo(key)} disabled={busy}
                   style={{
                     width: "100%", display: "flex", alignItems: "center", gap: "0.875rem",
-                    background: C.white, border: `1px solid ${C.border}`,
-                    borderRadius: "6px", padding: "0.625rem 0.875rem",
+                    background: C.white, border: `1px solid ${C.border}`, borderRadius: "8px",
+                    padding: "0.625rem 0.875rem",
                     cursor: busy ? "not-allowed" : "pointer",
                     opacity: busy && !isLoading ? 0.5 : 1,
-                    textAlign: "left",
-                    transition: "border-color 120ms ease, background 120ms ease",
+                    textAlign: "left", transition: "border-color 120ms ease, background 120ms ease",
                   }}
-                  onMouseEnter={(e) => {
-                    if (!busy) {
-                      e.currentTarget.style.borderColor = C.charcoal
-                      e.currentTarget.style.background = "#F9FAFB"
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = C.border
-                    e.currentTarget.style.background = C.white
-                  }}
+                  onMouseEnter={(e) => { if (!busy) { e.currentTarget.style.borderColor = C.charcoal; e.currentTarget.style.background = C.inputBg } }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = C.white }}
                 >
-                  <div className={`h-8 w-8 rounded flex items-center justify-center text-[10px] font-bold shrink-0 ${p.color}`}>
-                    {isLoading ? <Loader2 size={11} className="animate-spin" /> : p.initials}
+                  <div className={`h-9 w-9 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${p.color}`}>
+                    {isLoading ? <Loader2 size={12} className="animate-spin" /> : p.initials}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-                    <p style={{
-                      fontFamily: "var(--font-sans), system-ui, sans-serif",
-                      fontSize: "0.875rem", fontWeight: 600,
-                      color: C.text1, lineHeight: 1.3,
-                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                    }}>{p.name}</p>
-                    <p style={{
-                      fontFamily: "var(--font-mono), ui-monospace, monospace",
-                      fontSize: "0.6rem", letterSpacing: "0.08em",
-                      textTransform: "uppercase", color: C.text3,
-                    }}>{p.title}</p>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontFamily: sans, fontSize: "0.875rem", fontWeight: 600, color: C.text1, lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</p>
+                    <p style={{ fontFamily: mono, fontSize: "0.6rem", letterSpacing: "0.08em", textTransform: "uppercase", color: C.text3 }}>{p.title}</p>
                   </div>
-                  <span style={{ fontFamily: "var(--font-sans)", color: C.text3, fontSize: "0.875rem" }}>
-                    {isLoading ? "…" : "→"}
+                  <span style={{ color: C.text3, display: "inline-flex" }}>
+                    {isLoading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={15} />}
                   </span>
                 </button>
               )
             })}
           </div>
 
-          <p style={{
-            fontFamily: "var(--font-mono), ui-monospace, monospace",
-            fontSize: "0.6rem", letterSpacing: "0.12em",
-            color: C.text3, textTransform: "uppercase",
-            textAlign: "center", marginTop: "2rem",
-          }}>
+          <p style={{ fontFamily: mono, fontSize: "0.6rem", letterSpacing: "0.12em", color: C.text3, textTransform: "uppercase", textAlign: "center", marginTop: "2rem" }}>
             AmbrosIA · {year}
           </p>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   )
 }
