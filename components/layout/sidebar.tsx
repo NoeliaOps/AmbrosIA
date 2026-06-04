@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { ChevronDown, LogOut, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { MODULE_REGISTRY, CATALOG_NAV, type ModuleKey } from "@/lib/modules"
+import { MODULE_REGISTRY, RECIPES_NAV, CATALOG_SECONDARY_NAV, type ModuleKey } from "@/lib/modules"
 import { LogoWordmark } from "@/components/ui/logo"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
@@ -60,10 +60,16 @@ export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) 
     return persona.allowedModules.includes(key)
   })
 
+  const filteredRecipes = persona.showCatalogs
+    ? persona.catalogPaths
+      ? RECIPES_NAV.filter((item) => persona.catalogPaths!.includes(item.path))
+      : RECIPES_NAV
+    : []
+
   const filteredCatalogs = persona.showCatalogs
     ? persona.catalogPaths
-      ? CATALOG_NAV.filter((item) => persona.catalogPaths!.includes(item.path))
-      : CATALOG_NAV
+      ? CATALOG_SECONDARY_NAV.filter((item) => persona.catalogPaths!.includes(item.path))
+      : CATALOG_SECONDARY_NAV
     : []
 
   const initials = profile?.full_name
@@ -181,32 +187,35 @@ export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) 
           )
         })}
 
-        {/* ── Catalogs section ─────────────────── */}
+        {/* ── Recetas section — hero ────────────── */}
+        {filteredRecipes.length > 0 && (
+          <div className="pt-3">
+            <SectionDivider label="recetas" />
+            {filteredRecipes.map((item) => (
+              <NavItem
+                key={item.path}
+                href={item.path}
+                icon={<item.icon size={14} />}
+                label={item.label}
+                active={isActive(item.path)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* ── Catálogos secundarios ─────────────── */}
         {filteredCatalogs.length > 0 && (
           <div className="pt-3">
-            {/* Editorial section divider */}
-            <div className="flex items-center gap-2 px-2 mb-1.5">
-              <div className="flex-1 h-px" style={{ background: "rgb(232 226 216 / 0.1)" }} />
-              <span style={{
-                fontFamily: "var(--font-inter)",
-                fontSize: "0.55rem",
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                color: "rgb(232 226 216 / 0.25)",
-              }}>catálogos</span>
-              <div className="flex-1 h-px" style={{ background: "rgb(232 226 216 / 0.1)" }} />
-            </div>
-
             <button
               onClick={() => setCatalogOpen((v) => !v)}
               className={cn(
-                "relative flex w-full items-center justify-between rounded px-3 py-1.5 text-sm transition-colors duration-150",
+                "relative flex w-full items-center justify-between rounded px-3 py-1.5 transition-colors duration-150",
                 catalogOpen
-                  ? "text-sidebar-foreground/80"
-                  : "text-sidebar-foreground/45 hover:text-sidebar-foreground/70"
+                  ? "text-sidebar-foreground/70"
+                  : "text-sidebar-foreground/35 hover:text-sidebar-foreground/60"
               )}
             >
-              <span style={{ fontFamily: "var(--font-inter)", fontSize: "0.8rem", letterSpacing: "0.01em" }}>
+              <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.75rem", letterSpacing: "0.01em" }}>
                 Catálogos
               </span>
               <ChevronDown
@@ -222,7 +231,7 @@ export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) 
             <div className="nav-dropdown" data-open={catalogOpen ? "true" : "false"}>
               <div>
                 <div className="mt-0.5 ml-3 pl-3 border-l space-y-0.5"
-                  style={{ borderColor: "rgb(232 226 216 / 0.1)" }}>
+                  style={{ borderColor: "rgb(240 235 226 / 0.08)" }}>
                   {filteredCatalogs.map((item) => (
                     <NavItem
                       key={item.path}
@@ -308,6 +317,23 @@ type NavItemProps = {
   label: string
   active: boolean
   small?: boolean
+}
+
+function SectionDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 px-2 mb-1.5">
+      <div className="flex-1 h-px" style={{ background: "rgb(240 235 226 / 0.08)" }} />
+      <span style={{
+        fontFamily: "var(--font-mono)",
+        fontSize: "0.52rem",
+        letterSpacing: "0.2em",
+        textTransform: "uppercase",
+        color: "var(--amber)",
+        opacity: 0.6,
+      }}>{label}</span>
+      <div className="flex-1 h-px" style={{ background: "rgb(240 235 226 / 0.08)" }} />
+    </div>
+  )
 }
 
 function NavItem({ href, icon, label, active, small }: NavItemProps) {

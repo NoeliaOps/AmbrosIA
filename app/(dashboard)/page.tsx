@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import {
   CalendarDays, FileText, TrendingUp, CreditCard,
   AlertTriangle, Clock, ClipboardList, Users, ArrowRight,
-  CheckCircle, BarChart3,
+  CheckCircle, BarChart3, Package,
 } from "lucide-react"
 import { formatCurrency, formatDate, formatShortDate } from "@/lib/utils"
 
@@ -24,8 +24,9 @@ export default async function DashboardPage() {
   const today    = now.toISOString().slice(0, 10)
   const in7Days  = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10)
   const in30Days = new Date(now.getTime() + 30 * 86400000).toISOString().slice(0, 10)
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-  const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+  const monthStart    = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+  const monthEnd      = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString()
 
   const [
     { data: activeEvents },
@@ -35,6 +36,7 @@ export default async function DashboardPage() {
     { data: needsRequisition },
     { data: upcomingEvents },
     { data: profitData },
+    { data: staleIngredients },
   ] = await Promise.all([
     supabase.from("events")
       .select("id, name, event_date, status, guest_count, clients(name)")
@@ -59,6 +61,11 @@ export default async function DashboardPage() {
     supabase.from("events")
       .select("quotes(total, status), actual_purchases(total_cost), event_indirect_costs(amount), event_staff_assignments(computed_cost)")
       .eq("status", "completado"),
+    supabase.from("ingredients")
+      .select("id, name, unit, current_price, updated_at")
+      .lt("updated_at", thirtyDaysAgo)
+      .order("updated_at")
+      .limit(5),
   ])
 
   const totalConfirmed = (confirmedQuotes ?? []).reduce((s, q) => s + q.total, 0)
@@ -195,6 +202,37 @@ export default async function DashboardPage() {
               </div>
               <Link href="/requisiciones" className="text-xs font-sans shrink-0 font-medium hover:underline transition-colors" style={{ color: "var(--status-info)" }}>
                 Ver →
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {(staleIngredients ?? []).length > 0 && (
+          <div className="alert-banner" style={{ borderLeftColor: "var(--amber)" }}>
+            <div className="flex items-start gap-3">
+              <Package size={15} className="shrink-0 mt-0.5" style={{ color: "var(--amber)" }} />
+              <div className="flex-1 min-w-0 space-y-2">
+                <p className="text-sm font-sans font-semibold" style={{ color: "var(--text-1)" }}>
+                  Precios de ingredientes desactualizados
+                  <span className="ml-2 font-normal" style={{ color: "var(--text-2)", fontSize: "0.82rem" }}>sin actualizar hace +30 días</span>
+                </p>
+                <div className="space-y-1">
+                  {(staleIngredients ?? []).map((ing) => {
+                    const days = Math.floor((now.getTime() - new Date(ing.updated_at).getTime()) / 86400000)
+                    return (
+                      <div key={ing.id} className="flex items-center justify-between gap-4 text-xs font-sans" style={{ color: "var(--text-2)" }}>
+                        <span className="truncate">{ing.name}</span>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="mono-data" style={{ color: "var(--text-1)", fontSize: "0.8rem" }}>{formatCurrency(ing.current_price)}<span style={{ color: "var(--text-3)" }}>/{ing.unit}</span></span>
+                          <span className="mono-data" style={{ color: "var(--amber)", fontSize: "0.72rem" }}>hace {days}d</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              <Link href="/catalogos/ingredientes" className="text-xs font-sans shrink-0 font-medium hover:underline transition-colors" style={{ color: "var(--amber)" }}>
+                Actualizar →
               </Link>
             </div>
           </div>

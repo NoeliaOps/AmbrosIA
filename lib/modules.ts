@@ -161,6 +161,14 @@ export const MODULE_REGISTRY: Record<ModuleKey, ModuleConfig> = {
   },
 }
 
+// Recetas — primera sección de nav: el núcleo operativo de la herramienta
+export const RECIPES_NAV = [
+  { label: "Ingredientes", path: "/catalogos/ingredientes", icon: Package },
+  { label: "Platillos",    path: "/catalogos/platillos",    icon: UtensilsCrossed },
+  { label: "Menús",        path: "/catalogos/menus",        icon: BookOpen },
+] as const
+
+// Catálogos complementarios (proveedores, personal, costos)
 export const CATALOG_NAV = [
   { label: "Ingredientes",       path: "/catalogos/ingredientes",      icon: Package },
   { label: "Platillos",          path: "/catalogos/platillos",          icon: UtensilsCrossed },
@@ -168,6 +176,12 @@ export const CATALOG_NAV = [
   { label: "Proveedores",        path: "/catalogos/proveedores",        icon: Truck },
   { label: "Personal",           path: "/catalogos/personal",           icon: Users },
   { label: "Costos Indirectos",  path: "/catalogos/costos-indirectos",  icon: DollarSign },
+] as const
+
+export const CATALOG_SECONDARY_NAV = [
+  { label: "Proveedores",       path: "/catalogos/proveedores",       icon: Truck },
+  { label: "Personal",          path: "/catalogos/personal",          icon: Users },
+  { label: "Costos Indirectos", path: "/catalogos/costos-indirectos", icon: DollarSign },
 ] as const
 
 export const SETTINGS_NAV = [
