@@ -146,19 +146,19 @@ type Event = {
 // ── status config ─────────────────────────────────────────────────────────────
 
 const EVENT_STATUSES = [
-  { key: "cotizado",       label: "Cotizado",       className: "bg-blue-100 text-blue-800 border-blue-200" },
-  { key: "contratado",     label: "Contratado",     className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
-  { key: "en_requisicion", label: "En requisición", className: "bg-amber-100 text-amber-800 border-amber-200" },
-  { key: "en_compras",     label: "En compras",     className: "bg-orange-100 text-orange-800 border-orange-200" },
-  { key: "completado",     label: "Completado",     className: "bg-sage/20 text-sage border-sage/30" },
-  { key: "cancelado",      label: "Cancelado",      className: "bg-red-100 text-red-800 border-red-200" },
+  { key: "cotizado",       label: "Cotizado",       className: "pill-info"    },
+  { key: "contratado",     label: "Contratado",     className: "pill-active"  },
+  { key: "en_requisicion", label: "En requisición", className: "pill-warning" },
+  { key: "en_compras",     label: "En compras",     className: "pill-warning" },
+  { key: "completado",     label: "Completado",     className: "pill-done"    },
+  { key: "cancelado",      label: "Cancelado",      className: "pill-danger"  },
 ]
 
 const QUOTE_STATUS: Record<string, { label: string; className: string }> = {
-  borrador:  { label: "Borrador",  className: "bg-muted text-muted-foreground" },
-  enviada:   { label: "Enviada",   className: "bg-blue-100 text-blue-800" },
-  aprobada:  { label: "Aprobada",  className: "bg-emerald-100 text-emerald-800" },
-  rechazada: { label: "Rechazada", className: "bg-red-100 text-red-800" },
+  borrador:  { label: "Borrador",  className: "pill-draft"  },
+  enviada:   { label: "Enviada",   className: "pill-info"   },
+  aprobada:  { label: "Aprobada",  className: "pill-active" },
+  rechazada: { label: "Rechazada", className: "pill-danger" },
 }
 
 // ── edit event schema ─────────────────────────────────────────────────────────
@@ -718,8 +718,8 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
             onClick={() => handleStatusChange("cancelado")}
             className={`ml-2 px-3 py-1.5 rounded-full text-xs font-sans font-medium transition-colors border ${
               event.status === "cancelado"
-                ? "bg-red-100 text-red-800 border-red-200"
-                : "text-muted-foreground border-transparent hover:bg-red-50 hover:text-red-700"
+                ? "pill-danger border"
+                : "text-muted-foreground border-transparent hover:border-status-danger/20"
             }`}
           >
             Cancelado
@@ -768,7 +768,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
                   href={`https://wa.me/${event.clients.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${event.clients.name}, te contactamos respecto a tu evento *${event.name}* del ${new Date(event.event_date).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}.`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] font-sans transition-colors" style={{ color: "#34d399" }}
+                  className="inline-flex items-center gap-1 text-[11px] font-sans transition-colors" style={{ color: "var(--status-active)" }}
                   title="Enviar WhatsApp"
                 >
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
@@ -873,7 +873,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 h-7 rounded-md border px-2.5 text-xs font-sans transition-colors" style={{ borderColor: "rgb(52 211 153 / 0.25)", background: "rgb(52 211 153 / 0.08)", color: "#34d399" }}
+                    className="inline-flex items-center gap-1.5 h-7 rounded-md border px-2.5 text-xs font-sans transition-colors" style={{ borderColor: "rgb(82 182 138 / 0.25)", background: "rgb(82 182 138 / 0.08)", color: "var(--status-active)" }}
                   >
                     <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
                     WhatsApp
@@ -1034,9 +1034,10 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
               {/* Contract status */}
               <div className="flex items-center justify-between rounded-lg border border-border p-3">
                 <div className="flex items-center gap-3">
-                  <Badge variant="secondary" className={`font-sans text-xs ${contract.status === "firmado" ? "bg-emerald-100 text-emerald-800" : "bg-muted text-muted-foreground"}`}>
+                  <span className={`status-pill ${contract.status === "firmado" ? "pill-active" : "pill-draft"}`}>
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />
                     {contract.status === "firmado" ? "Firmado" : "Borrador"}
-                  </Badge>
+                  </span>
                   {contract.signed_at && (
                     <span className="text-xs font-sans text-muted-foreground">
                       Firmado el {formatDate(contract.signed_at.slice(0, 10))}
@@ -1119,7 +1120,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
                 {[
                   { label: "Total cotización", value: formatCurrency(quoteTotal), className: "" },
                   { label: "Programado", value: formatCurrency(totalScheduled), className: "" },
-                  { label: "Cobrado", value: formatCurrency(totalPaid), className: "text-emerald-700" },
+                  { label: "Cobrado", value: formatCurrency(totalPaid), className: "" },
                 ].map((s) => (
                   <div key={s.label} className="rounded-lg border border-border p-3 space-y-0.5">
                     <p className="text-xs font-sans text-muted-foreground">{s.label}</p>
@@ -1143,9 +1144,9 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
                 {payments.map((p, i) => {
                   const status = computePaymentStatus(p)
                   const statusCfg = {
-                    pagado:   { label: "Pagado",   className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
-                    vencido:  { label: "Vencido",  className: "bg-red-100 text-red-800 border-red-200" },
-                    pendiente:{ label: "Pendiente", className: "bg-muted text-muted-foreground border-transparent" },
+                    pagado:   { label: "Pagado",   className: "pill-active"  },
+                    vencido:  { label: "Vencido",  className: "pill-danger"  },
+                    pendiente:{ label: "Pendiente", className: "pill-warning" },
                   }[status] ?? { label: status, className: "" }
 
                   return (
@@ -1252,9 +1253,9 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
                     const isPast = i < currentIdx
                     const labels: Record<string, string> = { generada: "Generada", revisada: "Revisada", aprobada: "Aprobada" }
                     const colors: Record<string, string> = {
-                      generada: "bg-blue-100 text-blue-800 border-blue-200",
-                      revisada: "bg-amber-100 text-amber-800 border-amber-200",
-                      aprobada: "bg-emerald-100 text-emerald-800 border-emerald-200",
+                      generada: "pill-info",
+                      revisada: "pill-warning",
+                      aprobada: "pill-active",
                     }
                     return (
                       <div key={s} className="flex items-center gap-1 shrink-0">
@@ -1345,9 +1346,9 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
                   <div className="rounded-md border border-border overflow-hidden">
                     {purchaseOrders.map((po, i) => {
                       const poStatusCfg: Record<string, string> = {
-                        pendiente: "bg-muted text-muted-foreground border-transparent",
-                        enviada:   "bg-blue-100 text-blue-800 border-blue-200",
-                        recibida:  "bg-emerald-100 text-emerald-800 border-emerald-200",
+                        pendiente: "pill-draft",
+                        enviada:   "pill-info",
+                        recibida:  "pill-active",
                       }
                       const poStatusLabel: Record<string, string> = {
                         pendiente: "Pendiente", enviada: "Enviada", recibida: "Recibida",

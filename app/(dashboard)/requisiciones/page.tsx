@@ -2,16 +2,15 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/layout/page-header"
-import { Badge } from "@/components/ui/badge"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { ClipboardList, Package } from "lucide-react"
 
 export const metadata: Metadata = { title: "Requisiciones" }
 
-const STATUS_CFG: Record<string, { label: string; className: string }> = {
-  generada: { label: "Generada", className: "bg-blue-100 text-blue-800 border-blue-200" },
-  revisada: { label: "Revisada", className: "bg-amber-100 text-amber-800 border-amber-200" },
-  aprobada: { label: "Aprobada", className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+const STATUS_CFG: Record<string, { label: string; cls: string }> = {
+  generada: { label: "Generada", cls: "pill-info"    },
+  revisada: { label: "Revisada", cls: "pill-warning"  },
+  aprobada: { label: "Aprobada", cls: "pill-active"   },
 }
 
 export default async function RequisicionesPage() {
@@ -58,7 +57,7 @@ export default async function RequisicionesPage() {
           </div>
           {rows.map((r) => {
             const ev = r.events as { id: string; name: string; event_date: string; guest_count: number } | null
-            const cfg = STATUS_CFG[r.status] ?? { label: r.status, className: "" }
+            const cfg = STATUS_CFG[r.status] ?? { label: r.status, cls: "pill-draft" }
             return (
               <Link
                 key={r.id}
@@ -79,9 +78,10 @@ export default async function RequisicionesPage() {
                 <span className="text-sm font-sans tabular-nums text-right font-medium">
                   {formatCurrency(r.total)}
                 </span>
-                <Badge variant="secondary" className={`font-sans text-xs border w-fit ${cfg.className}`}>
+                <span className={`status-pill ${cfg.cls}`}>
+                  <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: "currentColor" }} />
                   {cfg.label}
-                </Badge>
+                </span>
               </Link>
             )
           })}

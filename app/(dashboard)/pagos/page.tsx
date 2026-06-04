@@ -51,12 +51,12 @@ export default async function PagosPage() {
           <p className="text-xl font-heading font-bold text-ink">{payments.length}</p>
           <p className="text-[10px] font-sans text-muted-foreground">En todos los eventos</p>
         </div>
-        <div className="rounded-lg border p-4 space-y-1" style={{ borderColor: "rgb(52 211 153 / 0.2)", background: "rgb(52 211 153 / 0.05)" }}>
+        <div className="rounded-lg border p-4 space-y-1" style={{ borderColor: "rgb(82 182 138 / 0.22)", background: "rgb(82 182 138 / 0.06)" }}>
           <div className="flex items-center gap-2">
-            <CheckCircle size={14} style={{ color: "#34d399" }} />
+            <CheckCircle size={14} style={{ color: "var(--status-active)" }} />
             <p className="text-xs font-sans text-muted-foreground">Total cobrado</p>
           </div>
-          <p className="mono-data text-xl font-bold" style={{ color: "#34d399" }}>{formatCurrency(totalCobrado)}</p>
+          <p className="mono-data text-xl font-bold" style={{ color: "var(--status-active)" }}>{formatCurrency(totalCobrado)}</p>
           <p className="text-[10px] font-sans text-muted-foreground">{pagados.length} pagos completados</p>
         </div>
         <div className="rounded-lg border p-4 space-y-1" style={{ borderColor: "rgb(232 162 39 / 0.2)", background: "rgb(232 162 39 / 0.05)" }}>

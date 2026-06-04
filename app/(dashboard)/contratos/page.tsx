@@ -7,12 +7,18 @@ import { FileSignature, CheckCircle2, Clock, Send, ExternalLink } from "lucide-r
 
 export const metadata: Metadata = { title: "Contratos" }
 
-const STATUS_CFG: Record<string, { label: string; dot: string; text: string; bg: string }> = {
-  borrador:  { label: "Borrador",   dot: "bg-gray-400",    text: "text-gray-600",    bg: "bg-gray-100" },
-  enviado:   { label: "Enviado",    dot: "bg-blue-400",    text: "text-blue-700",    bg: "bg-blue-50"  },
-  firmado:   { label: "Firmado",    dot: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50" },
-  cancelado: { label: "Cancelado",  dot: "bg-red-400",     text: "text-red-600",     bg: "bg-red-50"   },
+const STATUS_CFG: Record<string, { label: string; cls: string }> = {
+  borrador:  { label: "Borrador",  cls: "pill-draft"  },
+  enviado:   { label: "Enviado",   cls: "pill-info"   },
+  firmado:   { label: "Firmado",   cls: "pill-active" },
+  cancelado: { label: "Cancelado", cls: "pill-danger" },
 }
+
+const ACCENT_CFG = {
+  gold:    { border: "var(--amber)",         iconBg: "rgb(212 149 43 / 0.10)",  iconColor: "var(--amber)"         },
+  emerald: { border: "var(--status-active)", iconBg: "rgb(82 182 138 / 0.10)",  iconColor: "var(--status-active)" },
+  blue:    { border: "var(--status-info)",   iconBg: "rgb(107 155 189 / 0.10)", iconColor: "var(--status-info)"   },
+} as const
 
 type ContractRow = {
   id: string
@@ -55,17 +61,16 @@ export default async function ContratosPage() {
           { label: "Enviados",         value: String(enviados.length),  sub: "Pendientes de firma", icon: Send, accent: "blue" as const },
           { label: "Borradores",       value: String(borradores.length), sub: "Sin enviar al cliente", icon: Clock, accent: "gold" as const },
         ].map(({ label, value, sub, icon: Icon, accent }) => {
-          const borderClass = { gold: "border-l-gold", emerald: "border-l-emerald-500", blue: "border-l-blue-500" }[accent]
-          const iconClass   = { gold: "bg-gold/10 text-gold-dark", emerald: "bg-emerald-50 text-emerald-600", blue: "bg-blue-50 text-blue-600" }[accent]
+          const ac = ACCENT_CFG[accent]
           return (
-            <div key={label} className={`kpi-tile ${borderClass}`}>
+            <div key={label} className="kpi-tile" style={{ borderLeftColor: ac.border }}>
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1 min-w-0">
-                  <p className="text-[11px] font-sans font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-                  <p className="text-2xl font-heading font-bold text-ink leading-none tabular">{value}</p>
-                  <p className="text-[11px] font-sans text-muted-foreground">{sub}</p>
+                  <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-3)" }}>{label}</p>
+                  <p className="mono-data" style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-1)", lineHeight: 1 }}>{value}</p>
+                  <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.7rem", color: "var(--text-3)" }}>{sub}</p>
                 </div>
-                <div className={`shrink-0 rounded-lg p-2 ${iconClass}`}><Icon size={16} /></div>
+                <div className="shrink-0 rounded p-1.5" style={{ background: ac.iconBg, color: ac.iconColor }}><Icon size={15} /></div>
               </div>
             </div>
           )
@@ -112,13 +117,13 @@ export default async function ContratosPage() {
                   <div className="col-span-2 text-center">
                     <p className="mono-data" style={{ fontSize: "0.8rem", color: "var(--text-2)" }}>{formatShortDate(c.created_at)}</p>
                     {c.signed_at && (
-                      <p className="mono-data mt-0.5" style={{ fontSize: "0.62rem", color: "#34d399" }}>Firmado {formatShortDate(c.signed_at)}</p>
+                      <p className="mono-data mt-0.5" style={{ fontSize: "0.62rem", color: "var(--status-active)" }}>Firmado {formatShortDate(c.signed_at)}</p>
                     )}
                   </div>
                   <div className="col-span-1 flex justify-center">
                     {cfg && (
-                      <span className={`status-pill ${cfg.bg} ${cfg.text}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${cfg.dot}`} />
+                      <span className={`status-pill ${cfg.cls}`}>
+                        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: "currentColor" }} />
                         {cfg.label}
                       </span>
                     )}

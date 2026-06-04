@@ -10,7 +10,7 @@
   --font-sans:     var(--font-sans);
   --font-mono:     var(--font-mono);
   --font-heading:  var(--font-display);
-  --font-body:     var(--font-display);
+  --font-body:     var(--font-sans);        /* FIX: was --font-display — Fraunces must not be body */
   --color-sidebar-ring:               var(--sidebar-ring);
   --color-sidebar-border:             var(--sidebar-border);
   --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
@@ -48,16 +48,16 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
-  /* Convenience aliases */
-  --color-amber:      #E8A227;
-  --color-amber-dim:  #7A560E;
-  --color-sage:       #4E7A56;
-  --color-ember:      #C4423A;
-  --color-jade:       #3A8A6C;
-  --color-ink:        #E8E3DA;
+  /* Convenience aliases — updated for warm palette */
+  --color-amber:      #D4952B;
+  --color-amber-dim:  #7A5218;
+  --color-sage:       #52936B;
+  --color-ember:      #C05845;
+  --color-jade:       #3D8C6E;
+  --color-ink:        #F0EBE2;
   /* Legacy Artesano client tokens */
-  --color-gold:        #E8A227;
-  --color-gold-dark:   #7A560E;
+  --color-gold:        #D4952B;
+  --color-gold-dark:   #7A5218;
   --color-cream:       #F3F0E9;
   --color-charcoal:    #3C3C3C;
   --color-silver:      #E5E5E5;
@@ -65,33 +65,53 @@
 }
 
 :root {
-  /* ── Custom easing curves ───────────────────── */
+  /* ── Custom easing curves ─────────────────────────── */
   --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
-  /* ── AmbrosIA Platform Dark Palette ────────── */
-  --void:        #09090C;
-  --surface-0:   #0F1118;
-  --surface-1:   #171B24;
-  --surface-2:   #1F2330;
-  --surface-3:   #272C3A;
-  --border-dim:  #20242F;
-  --border-def:  #2A2F3E;
-  --border-str:  #3A4055;
-  --text-1:      #E8E3DA;
-  --text-2:      #8A8680;
-  --text-3:      #504E4A;
+  /* ══════════════════════════════════════════════════════
+     PALETTE — Warm Obsidian
+     Superficies con sesgo cálido (H≈30°) que armoniza con
+     el acento ámbar. Antes: azul-pizarra frío (#0F1118…).
+     ══════════════════════════════════════════════════════ */
+  --void:       #0A0907;   /* base más oscura — casi negro pero cálido */
+  --surface-0:  #131109;   /* fondo principal de la app */
+  --surface-1:  #1C1915;   /* tarjetas, enterprise-card */
+  --surface-2:  #252119;   /* inputs, dropdowns, secondary bg */
+  --surface-3:  #302B22;   /* hover states, tertiary bg */
 
-  /* ── Accents ───────────────────────────────── */
-  --amber:       #E8A227;
-  --amber-dim:   #7A560E;
-  --amber-glow:  rgb(232 162 39 / 0.14);
-  --sage:        #4E7A56;
-  --ember:       #C4423A;
-  --jade:        #3A8A6C;
+  /* Bordes — todos cálidos, no azulados */
+  --border-dim:  #242018;  /* separador muy sutil */
+  --border-def:  #332C22;  /* borde estándar */
+  --border-str:  #413728;  /* borde fuerte / hover */
 
-  /* ── Shadcn semantic tokens ─────────────────── */
+  /* Texto — crema cálida */
+  --text-1:  #F0EBE2;   /* primario — crema cálida */
+  --text-2:  #8E8278;   /* secundario — gris cálido */
+  --text-3:  #5C5249;   /* terciario — marrón-gris */
+
+  /* ── Acento principal ─────────────────────────────── */
+  /* Miel profunda: menos amarillo eléctrico, más dorado  */
+  --amber:       #D4952B;
+  --amber-dim:   #7A5218;
+  --amber-glow:  rgb(212 149 43 / 0.14);
+
+  /* ── Semánticos — ajustados a temperatura cálida ──── */
+  /* Antes: #34d399 / #5B8DEF eran colores Tailwind para  */
+  /* fondos claros — saturados y fríos sobre dark cálido.  */
+  --status-active:  #52B68A;  /* verde jade cálido (no esmeralda puro) */
+  --status-info:    #6B9BBD;  /* azul pizarra polvoriento (no azul eléctrico) */
+  --status-danger:  #C05845;  /* terracota (rojo-naranja, no rojo puro) */
+  --status-done:    #52936B;  /* salvia muted */
+  --status-draft:   var(--text-3);
+
+  /* Aliases heredados — ahora apuntan a los nuevos valores */
+  --sage:   #52936B;
+  --ember:  #C05845;
+  --jade:   #3D8C6E;
+
+  /* ── Shadcn semantic tokens ───────────────────────── */
   --background:           var(--surface-0);
   --foreground:           var(--text-1);
   --card:                 var(--surface-1);
@@ -111,14 +131,14 @@
   --input:                var(--surface-2);
   --ring:                 var(--amber);
   --chart-1:              var(--amber);
-  --chart-2:              var(--sage);
+  --chart-2:              var(--status-active);
   --chart-3:              #C4823A;
   --chart-4:              #8A7355;
   --chart-5:              var(--text-2);
   --radius:               0.375rem;
 
-  /* ── Sidebar (deepest dark) ─────────────────── */
-  --sidebar:                    var(--void);
+  /* ── Sidebar ──────────────────────────────────────── */
+  --sidebar:                    #0D0B08;  /* ligeramente distinto al void */
   --sidebar-foreground:         var(--text-1);
   --sidebar-primary:            var(--amber);
   --sidebar-primary-foreground: #0C0C0A;
@@ -127,8 +147,8 @@
   --sidebar-border:             var(--border-dim);
   --sidebar-ring:               var(--amber);
 
-  /* ── Artesano client skin tokens ───────────── */
-  --artesano-ink:        #0F0F0F;
+  /* ── Tokens de compatibilidad ─────────────────────── */
+  --artesano-ink:        #F0EBE2;  /* era #0F0F0F (negro), ahora crema para dark mode */
   --artesano-charcoal:   #3C3C3C;
   --artesano-silver:     #E5E5E5;
   --artesano-cream:      #F3F0E9;
@@ -137,7 +157,7 @@
   --artesano-gold-dark:  var(--amber-dim);
   --artesano-terracotta: #B46B4D;
 
-  /* ── Font aliases for backward compat ──────── */
+  /* ── Font aliases ─────────────────────────────────── */
   --font-playfair:   var(--font-display);
   --font-cormorant:  var(--font-display);
   --font-inter:      var(--font-sans);
@@ -149,13 +169,13 @@
     @apply border-border;
   }
 
-  /* Subtle noise grain — screen blend for dark bg */
+  /* Grain sutil — mismo peso que antes */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='250' height='250' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-    opacity: 0.035;
+    opacity: 0.03;
     pointer-events: none;
     z-index: 9999;
     mix-blend-mode: screen;
@@ -176,10 +196,22 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  /* ── Jerarquía tipográfica — regla de oro ─────────────
+     Fraunces (display): SOLO h1 y h2 en pantalla, 22px+
+     Instrument Sans:    h3–h6, nav, labels, table body
+     DM Mono:            datos (cantidades, fechas, IDs)
+     ─────────────────────────────────────────────────── */
+  h1, h2 {
     font-family: var(--font-display), Georgia, serif;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+  }
+
+  h3, h4, h5, h6 {
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
   }
 
   ::selection {
@@ -187,7 +219,7 @@
     color: var(--amber);
   }
 
-  /* Thin amber scrollbar */
+  /* Thin warm scrollbar */
   ::-webkit-scrollbar { width: 4px; height: 4px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
@@ -199,11 +231,11 @@
 
 @layer components {
 
-  /* ══════════════════════════════════════════════
-     TYPOGRAPHY
-     ══════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════
+     TYPOGRAPHY UTILITIES
+     ══════════════════════════════════════════════════════ */
 
-  /* Monospace data — amounts, dates, IDs */
+  /* Datos numéricos — amounts, dates, IDs */
   .mono-data {
     font-family: var(--font-mono), ui-monospace, monospace;
     font-size: 0.95em;
@@ -211,34 +243,35 @@
     letter-spacing: -0.01em;
   }
 
-  /* Display label — small caps in display font */
-  .display-label {
-    font-family: var(--font-display), Georgia, serif;
-    font-variant: small-caps;
-    font-size: 0.9em;
+  /* Label de sección — sans semibold, no display */
+  .section-label {
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-size: 0.6875rem;
     font-weight: 600;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-3);
   }
 
-  /* ══════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════
      STRUCTURAL COMPONENTS
-     ══════════════════════════════════════════════ */
+     ══════════════════════════════════════════════════════ */
 
   .enterprise-card {
     background-color: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     box-shadow:
-      0 1px 3px 0 rgb(0 0 0 / 0.3),
-      0 0 0 0.5px rgb(255 255 255 / 0.03) inset;
+      0 1px 3px 0 rgb(0 0 0 / 0.35),
+      0 0 0 0.5px rgb(255 240 200 / 0.02) inset;
     transition: box-shadow 200ms var(--ease-out), border-color 200ms var(--ease-out);
   }
   @media (hover: hover) and (pointer: fine) {
     .enterprise-card:hover {
       border-color: var(--border-str);
       box-shadow:
-        0 4px 12px 0 rgb(0 0 0 / 0.4),
-        0 0 0 0.5px rgb(255 255 255 / 0.04) inset;
+        0 4px 16px 0 rgb(0 0 0 / 0.45),
+        0 0 0 0.5px rgb(255 240 200 / 0.03) inset;
     }
   }
 
@@ -247,7 +280,7 @@
   }
   @media (hover: hover) and (pointer: fine) {
     .table-row-hover:hover {
-      background-color: rgb(232 162 39 / 0.05);
+      background-color: var(--amber-glow);
     }
   }
 
@@ -256,7 +289,7 @@
     border-bottom: 1px solid var(--border);
   }
 
-  /* KPI tile — amber accent border, dark card */
+  /* KPI tile — accent border, warm card */
   .kpi-tile {
     background-color: var(--card);
     border: 1px solid var(--border);
@@ -264,8 +297,8 @@
     border-left-width: 2px;
     padding: 1.25rem;
     box-shadow:
-      0 1px 3px 0 rgb(0 0 0 / 0.25),
-      0 0 0 0.5px rgb(255 255 255 / 0.02) inset;
+      0 1px 3px 0 rgb(0 0 0 / 0.3),
+      0 0 0 0.5px rgb(255 240 200 / 0.02) inset;
     transition: box-shadow 220ms var(--ease-out), transform 220ms var(--ease-out), border-color 220ms var(--ease-out);
     position: relative;
     overflow: hidden;
@@ -277,15 +310,15 @@
     right: 0;
     width: 80px;
     height: 80px;
-    background: radial-gradient(ellipse at top right, rgb(232 162 39 / 0.06), transparent 70%);
+    background: radial-gradient(ellipse at top right, var(--amber-glow), transparent 70%);
     pointer-events: none;
   }
   @media (hover: hover) and (pointer: fine) {
     .kpi-tile:hover {
       border-color: var(--border-str);
       box-shadow:
-        0 6px 20px 0 rgb(0 0 0 / 0.4),
-        0 0 0 0.5px rgb(255 255 255 / 0.04) inset;
+        0 6px 24px 0 rgb(0 0 0 / 0.45),
+        0 0 0 0.5px rgb(255 240 200 / 0.04) inset;
       transform: translateY(-2px);
     }
   }
@@ -300,7 +333,7 @@
     transition: border-color 180ms var(--ease-out);
   }
 
-  /* Section header with amber rule */
+  /* Section header con accent rule */
   .section-header {
     display: flex;
     align-items: flex-end;
@@ -320,9 +353,11 @@
     background: var(--amber);
   }
 
-  /* ══════════════════════════════════════════════
-     STATUS PILLS  — dark-first palette
-     ══════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════
+     STATUS PILLS — paleta cálida ajustada
+     Antes: colores Tailwind saturados, fríos (para light mode)
+     Ahora: temperatura ajustada, desaturados, armónicos
+     ══════════════════════════════════════════════════════ */
   .status-pill {
     display: inline-flex;
     align-items: center;
@@ -337,17 +372,46 @@
     border: 1px solid transparent;
   }
 
-  /* Semantic pill variants */
-  .pill-draft    { background: rgb(255 255 255 / 0.04); color: var(--text-2); border-color: var(--border-def); }
-  .pill-active   { background: rgb(52 211 153 / 0.12); color: #34d399; border-color: rgb(52 211 153 / 0.25); }
-  .pill-warning  { background: rgb(232 162 39 / 0.12); color: var(--amber); border-color: rgb(232 162 39 / 0.25); }
-  .pill-danger   { background: rgb(196 66 58 / 0.12); color: var(--ember); border-color: rgb(196 66 58 / 0.25); }
-  .pill-info     { background: rgb(91 141 239 / 0.12); color: #5B8DEF; border-color: rgb(91 141 239 / 0.25); }
-  .pill-done     { background: rgb(78 122 86 / 0.14); color: var(--sage); border-color: rgb(78 122 86 / 0.3); }
+  /* Draft / neutro */
+  .pill-draft {
+    background: rgb(240 235 226 / 0.04);
+    color: var(--text-3);
+    border-color: var(--border-def);
+  }
+  /* Activo / Contratado — verde jade cálido */
+  .pill-active {
+    background: rgb(82 182 138 / 0.10);
+    color: var(--status-active);
+    border-color: rgb(82 182 138 / 0.22);
+  }
+  /* Warning / En proceso — ámbar */
+  .pill-warning {
+    background: rgb(212 149 43 / 0.10);
+    color: var(--amber);
+    border-color: rgb(212 149 43 / 0.22);
+  }
+  /* Danger / Vencido — terracota */
+  .pill-danger {
+    background: rgb(192 88 69 / 0.10);
+    color: var(--status-danger);
+    border-color: rgb(192 88 69 / 0.22);
+  }
+  /* Info / Cotizado — azul pizarra */
+  .pill-info {
+    background: rgb(107 155 189 / 0.10);
+    color: var(--status-info);
+    border-color: rgb(107 155 189 / 0.22);
+  }
+  /* Done / Completado — salvia */
+  .pill-done {
+    background: rgb(82 147 107 / 0.10);
+    color: var(--status-done);
+    border-color: rgb(82 147 107 / 0.22);
+  }
 
-  /* ══════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════
      INPUTS
-     ══════════════════════════════════════════════ */
+     ══════════════════════════════════════════════════════ */
   input[type="text"],
   input[type="email"],
   input[type="password"],
@@ -358,7 +422,7 @@
   select {
     font-family: var(--font-sans), system-ui, sans-serif;
     font-size: 13.5px;
-    background-color: var(--surface-1);
+    background-color: var(--surface-2);
     border-color: var(--border);
     color: var(--text-1);
     transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
@@ -372,17 +436,17 @@
     outline: none;
   }
 
-  /* ══════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════
      TABULAR NUMBERS
-     ══════════════════════════════════════════════ */
+     ══════════════════════════════════════════════════════ */
   .tabular {
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
 
-  /* ══════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════
      SIDEBAR NAVIGATION
-     ══════════════════════════════════════════════ */
+     ══════════════════════════════════════════════════════ */
   .nav-item-active {
     color: var(--amber);
     font-weight: 500;
@@ -405,9 +469,9 @@
     transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
   }
 
-  /* ══════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════
      SIDEBAR DROPDOWN — animated accordion
-     ══════════════════════════════════════════════ */
+     ══════════════════════════════════════════════════════ */
   .nav-dropdown {
     display: grid;
     grid-template-rows: 0fr;
@@ -422,9 +486,9 @@
     opacity: 1;
   }
 
-  /* ══════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════
      PAGE ENTRY ANIMATIONS
-     ══════════════════════════════════════════════ */
+     ══════════════════════════════════════════════════════ */
   @keyframes fade-up {
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -434,7 +498,6 @@
     animation: fade-up 280ms var(--ease-out) both;
   }
 
-  /* Stagger for grouped items */
   .stagger-children > * {
     animation: fade-up 300ms var(--ease-out) both;
   }
@@ -445,9 +508,9 @@
   .stagger-children > *:nth-child(5) { animation-delay: 220ms; }
   .stagger-children > *:nth-child(6) { animation-delay: 275ms; }
 
-  /* ══════════════════════════════════════════════
+  /* ══════════════════════════════════════════════════════
      REDUCED MOTION
-     ══════════════════════════════════════════════ */
+     ══════════════════════════════════════════════════════ */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

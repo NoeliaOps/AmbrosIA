@@ -30,7 +30,10 @@ export const metadata: Metadata = {
   },
   description: "Gestión integral para banqueteras y catering",
   icons: {
-    icon: "/brand/ambrosia-favicon.jpg",
+    icon: [
+      { url: "/brand/ambrosia-favicon.svg", type: "image/svg+xml" },
+      { url: "/brand/ambrosia-favicon.svg", sizes: "any" },
+    ],
     apple: "/brand/ambrosia-touchicon.jpg",
   },
 }

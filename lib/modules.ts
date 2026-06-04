@@ -129,11 +129,11 @@ export const MODULE_REGISTRY: Record<ModuleKey, ModuleConfig> = {
   },
   calendar: {
     label: "Calendario",
-    description: "Vista de disponibilidad de fechas",
+    description: "Vista mensual de eventos y control de días",
     path: "/calendario",
     icon: Calendar,
-    group: "optional",
-    defaultEnabled: false,
+    group: "core",
+    defaultEnabled: true,
   },
   templates: {
     label: "Plantillas",

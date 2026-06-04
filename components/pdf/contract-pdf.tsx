@@ -16,7 +16,7 @@ Font.register({
   ],
 })
 
-const GOLD = "#C6A56B"
+const GOLD = "#D4952B"
 const INK = "#0F0F0F"
 const CHARCOAL = "#3C3C3C"
 const CREAM = "#F3F0E9"

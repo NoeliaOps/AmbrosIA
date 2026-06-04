@@ -25,7 +25,7 @@ export default async function CalendarioPage({
 
   const { data: events } = await supabase
     .from("events")
-    .select("id, name, event_date, status, guest_count, clients(name)")
+    .select("id, name, event_date, event_time, status, guest_count, location, clients(name)")
     .gte("event_date", firstDay)
     .lte("event_date", lastDay)
     .neq("status", "cancelado")
@@ -43,7 +43,9 @@ export type CalendarEvent = {
   id: string
   name: string
   event_date: string
+  event_time: string | null
   status: string
   guest_count: number
+  location: string | null
   clients: { name: string } | null
 }

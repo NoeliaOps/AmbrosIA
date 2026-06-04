@@ -2,16 +2,15 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/layout/page-header"
-import { Badge } from "@/components/ui/badge"
 import { formatCurrency, formatShortDate } from "@/lib/utils"
 import { ShoppingCart } from "lucide-react"
 
 export const metadata: Metadata = { title: "Órdenes de Compra" }
 
-const STATUS_CFG: Record<string, { label: string; className: string }> = {
-  pendiente: { label: "Pendiente", className: "bg-muted text-muted-foreground border-transparent" },
-  enviada:   { label: "Enviada",   className: "bg-blue-100 text-blue-800 border-blue-200" },
-  recibida:  { label: "Recibida",  className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+const STATUS_CFG: Record<string, { label: string; cls: string }> = {
+  pendiente: { label: "Pendiente", cls: "pill-draft"  },
+  enviada:   { label: "Enviada",   cls: "pill-info"   },
+  recibida:  { label: "Recibida",  cls: "pill-active" },
 }
 
 const STATUS_ORDER = ["pendiente", "enviada", "recibida"]
@@ -59,9 +58,10 @@ export default async function OrdeneCompraPage() {
             return (
               <div key={status} className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className={`font-sans text-xs border ${cfg.className}`}>
+                  <span className={`status-pill ${cfg.cls}`}>
+                    <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: "currentColor" }} />
                     {cfg.label}
-                  </Badge>
+                  </span>
                   <span className="text-xs font-sans text-muted-foreground">{items.length} orden{items.length !== 1 ? "es" : ""}</span>
                 </div>
                 <div className="rounded-md border border-border overflow-hidden">
@@ -86,7 +86,7 @@ export default async function OrdeneCompraPage() {
                           <p className="font-medium text-sm">{supplier?.name ?? "Sin proveedor"}</p>
                           <p className="text-xs font-sans text-muted-foreground truncate">{event?.name ?? "—"}</p>
                         </div>
-                        <span className={`text-sm font-sans ${isOverdue ? "text-red-600 font-semibold" : "text-muted-foreground"}`}>
+                        <span className="text-sm font-sans" style={{ color: isOverdue ? "var(--status-danger)" : "var(--text-2)", fontWeight: isOverdue ? 600 : 400 }}>
                           {po.buy_by_date ? formatShortDate(po.buy_by_date) : "—"}
                           {isOverdue && " ⚠"}
                         </span>

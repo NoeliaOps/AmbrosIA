@@ -139,10 +139,10 @@ export function StaffClient({ staff: initial }: Props) {
       cell: (row) => <span className="text-muted-foreground">{row.phone ?? "—"}</span> },
     { key: "is_active", header: "Estado",
       cell: (row) => (
-        <Badge variant={row.is_active ? "default" : "secondary"}
-          className={`font-sans text-xs ${row.is_active ? "bg-green-100 text-green-800 border-green-200" : ""}`}>
+        <span className={`status-pill ${row.is_active ? "pill-active" : "pill-draft"}`}>
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />
           {row.is_active ? "Activo" : "Inactivo"}
-        </Badge>
+        </span>
       )},
     { key: "actions", header: "", className: "w-20 text-right",
       cell: (row) => (

@@ -6,6 +6,7 @@ import { useState, useTransition } from "react"
 import { ChevronDown, LogOut, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MODULE_REGISTRY, CATALOG_NAV, type ModuleKey } from "@/lib/modules"
+import { LogoWordmark } from "@/components/ui/logo"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -21,7 +22,7 @@ type SidebarProps = {
 }
 
 const CORE_NAV_KEYS: ModuleKey[] = [
-  "dashboard", "events", "quotes", "contracts", "payments",
+  "dashboard", "calendar", "events", "quotes", "contracts", "payments",
   "requisitions", "purchase_orders", "actual_purchases", "profit", "staff",
 ]
 const PERSONA_ORDER: DemoPersona[] = ["admin", "coordinadora", "chef"]
@@ -75,12 +76,7 @@ export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) 
 
       {/* ── Logo mark ─────────────────────────────── */}
       <div className="flex h-14 items-center px-4 border-b border-sidebar-border">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/brand/ambrosia-logo.jpg"
-          alt="AmbrosIA"
-          style={{ height: "28px", width: "auto", objectFit: "contain" }}
-        />
+        <LogoWordmark size="md" />
       </div>
 
       {/* ── Demo persona switcher ─────────────────── */}
@@ -152,15 +148,15 @@ export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) 
                     </div>
                     <div className="flex-1 min-w-0">
                       <p style={{
-                        fontFamily: "var(--font-cormorant), Georgia, serif",
+                        fontFamily: "var(--font-sans), system-ui, sans-serif",
                         fontSize: "0.8rem",
                         fontWeight: active ? 600 : 400,
-                        color: active ? "#C6A56B" : "rgb(232 226 216 / 0.65)",
+                        color: active ? "var(--amber)" : "rgb(240 235 226 / 0.6)",
                         letterSpacing: "0.01em",
                       }} className="truncate">{p.name}</p>
                     </div>
                     {active && (
-                      <span style={{ color: "#C6A56B", fontSize: "0.65rem", opacity: 0.7 }}>✓</span>
+                      <span style={{ color: "var(--amber)", fontSize: "0.65rem", opacity: 0.7 }}>✓</span>
                     )}
                   </button>
                 )
@@ -260,30 +256,30 @@ export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) 
           style={{ borderTop: "1px dashed rgb(232 226 216 / 0.1)" }}>
           <div className="h-7 w-7 rounded-sm flex items-center justify-center shrink-0 text-xs font-semibold"
             style={{
-              background: "#C6A56B",
-              color: "#0F0F0F",
-              fontFamily: "var(--font-playfair), Georgia, serif",
+              background: "var(--amber)",
+              color: "#0C0C0A",
+              fontFamily: "var(--font-display), Georgia, serif",
               fontSize: "0.75rem",
             }}>
             {initials}
           </div>
           <div className="flex-1 min-w-0">
             <p style={{
-              fontFamily: "var(--font-cormorant), Georgia, serif",
-              fontSize: "0.875rem",
+              fontFamily: "var(--font-sans), system-ui, sans-serif",
+              fontSize: "0.8125rem",
               fontWeight: 500,
-              color: "rgb(232 226 216 / 0.75)",
+              color: "rgb(240 235 226 / 0.8)",
               letterSpacing: "0.01em",
               lineHeight: 1.3,
             }} className="truncate">
               {profile?.full_name ?? profile?.email ?? "Usuario"}
             </p>
             <p style={{
-              fontFamily: "var(--font-inter)",
-              fontSize: "0.6rem",
+              fontFamily: "var(--font-mono), ui-monospace, monospace",
+              fontSize: "0.58rem",
               letterSpacing: "0.1em",
               textTransform: "uppercase",
-              color: "rgb(232 226 216 / 0.28)",
+              color: "rgb(240 235 226 / 0.28)",
             }} className="truncate">
               {profile?.role === "admin" ? "Administrador" : profile?.role === "coordinator" ? "Coordinador" : "Chef · Compras"}
             </p>
@@ -330,11 +326,11 @@ function NavItem({ href, icon, label, active, small }: NavItemProps) {
       <span className={cn(
         "absolute left-0 top-1/2 -translate-y-1/2 rounded-r-full transition-all duration-200",
         active ? "opacity-100 h-4 w-0.5" : "opacity-0 h-2 w-0.5",
-      )} style={{ background: active ? "#C6A56B" : "transparent" }} />
+      )} style={{ background: active ? "var(--amber)" : "transparent" }} />
 
       {/* Icon */}
       <span style={{
-        color: active ? "#C6A56B" : "rgb(232 226 216 / 0.4)",
+        color: active ? "var(--amber)" : "rgb(240 235 226 / 0.38)",
         transition: "color 150ms ease",
       }}>
         {icon}
@@ -342,10 +338,10 @@ function NavItem({ href, icon, label, active, small }: NavItemProps) {
 
       {/* Label */}
       <span style={{
-        fontFamily: "var(--font-inter), system-ui, sans-serif",
+        fontFamily: "var(--font-sans), system-ui, sans-serif",
         fontSize: small ? "0.75rem" : "0.8125rem",
         fontWeight: active ? 500 : 400,
-        color: active ? "#C6A56B" : "rgb(232 226 216 / 0.55)",
+        color: active ? "var(--amber)" : "rgb(240 235 226 / 0.52)",
         letterSpacing: "0.01em",
         transition: "color 150ms ease",
       }}>

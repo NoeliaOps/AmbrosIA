@@ -8,6 +8,7 @@ import { z } from "zod"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { LogoWordmark } from "@/components/ui/logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -91,12 +92,7 @@ export default function LoginPage() {
         {/* Content */}
         <div className="relative z-10 flex flex-col h-full p-12 xl:p-16">
           {/* Logo */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/brand/ambrosia-logo.jpg"
-            alt="AmbrosIA"
-            style={{ height: "32px", width: "auto", objectFit: "contain" }}
-          />
+          <LogoWordmark size="md" />
 
           {/* Center hero */}
           <div className="flex-1 flex flex-col justify-center max-w-md">
@@ -161,7 +157,7 @@ export default function LoginPage() {
       </div>
 
       {/* ── Right form panel ─────────────────────────── */}
-      <div className="flex-1 flex items-center justify-center px-6 py-10 overflow-y-auto relative"
+      <div className="flex-1 flex flex-col items-center justify-center px-5 sm:px-8 pt-20 pb-8 sm:py-10 overflow-y-auto relative"
         style={{ background: "var(--surface-0)" }}>
 
         {/* Noise */}
@@ -171,17 +167,12 @@ export default function LoginPage() {
         }} />
 
         {/* Mobile logo */}
-        <div className="lg:hidden absolute top-6 left-6">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/brand/ambrosia-logo.jpg"
-            alt="AmbrosIA"
-            style={{ height: "26px", width: "auto", objectFit: "contain" }}
-          />
+        <div className="lg:hidden absolute top-5 left-5">
+          <LogoWordmark size="sm" />
         </div>
 
         {/* Card */}
-        <div className="relative z-10 w-full max-w-[22rem]">
+        <div className="relative z-10 w-full max-w-sm">
           <div style={{
             background: "var(--surface-1)",
             border: "1px solid var(--border)",
@@ -218,7 +209,7 @@ export default function LoginPage() {
                 }}>Correo electrónico</Label>
                 <Input
                   id="email" type="email"
-                  placeholder="admin@artesano.mx"
+                  placeholder="correo@empresa.com"
                   autoComplete="email"
                   {...register("email")}
                   style={{

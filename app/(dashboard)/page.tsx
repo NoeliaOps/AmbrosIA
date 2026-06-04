@@ -174,9 +174,9 @@ export default async function DashboardPage() {
         )}
 
         {eventsNeedingReq.length > 0 && (
-          <div className="alert-banner" style={{ borderLeftColor: "#5B8DEF" }}>
+          <div className="alert-banner" style={{ borderLeftColor: "var(--status-info)" }}>
             <div className="flex items-start gap-3">
-              <ClipboardList size={15} className="shrink-0 mt-0.5" style={{ color: "#5B8DEF" }} />
+              <ClipboardList size={15} className="shrink-0 mt-0.5" style={{ color: "var(--status-info)" }} />
               <div className="flex-1 min-w-0 space-y-2">
                 <p className="text-sm font-sans font-semibold" style={{ color: "var(--text-1)" }}>
                   {eventsNeedingReq.length} evento{eventsNeedingReq.length !== 1 ? "s" : ""} sin requisición
@@ -188,12 +188,12 @@ export default async function DashboardPage() {
                       className="flex items-center justify-between text-xs font-sans transition-colors group"
                       style={{ color: "var(--text-2)" }}>
                       <span className="truncate group-hover:text-foreground transition-colors">{e.name}</span>
-                      <span className="mono-data shrink-0 ml-4" style={{ color: "#5B8DEF", fontSize: "0.75rem" }}>{formatShortDate(e.event_date)}</span>
+                      <span className="mono-data shrink-0 ml-4" style={{ color: "var(--status-info)", fontSize: "0.75rem" }}>{formatShortDate(e.event_date)}</span>
                     </Link>
                   ))}
                 </div>
               </div>
-              <Link href="/requisiciones" className="text-xs font-sans shrink-0 font-medium hover:underline transition-colors" style={{ color: "#5B8DEF" }}>
+              <Link href="/requisiciones" className="text-xs font-sans shrink-0 font-medium hover:underline transition-colors" style={{ color: "var(--status-info)" }}>
                 Ver →
               </Link>
             </div>
@@ -366,10 +366,10 @@ function KpiTile({
   accent: "gold" | "emerald" | "red" | "blue"
 }) {
   const config = {
-    gold:    { border: "var(--amber)",   icon: "var(--amber)",   iconBg: "rgb(232 162 39 / 0.12)" },
-    emerald: { border: "#34d399",        icon: "#34d399",        iconBg: "rgb(52 211 153 / 0.10)" },
-    red:     { border: "var(--ember)",   icon: "var(--ember)",   iconBg: "rgb(196 66 58 / 0.12)"  },
-    blue:    { border: "#5B8DEF",        icon: "#5B8DEF",        iconBg: "rgb(91 141 239 / 0.12)" },
+    gold:    { border: "var(--amber)",        icon: "var(--amber)",        iconBg: "rgb(212 149 43 / 0.12)"  },
+    emerald: { border: "var(--status-active)", icon: "var(--status-active)", iconBg: "rgb(82 182 138 / 0.10)"  },
+    red:     { border: "var(--ember)",        icon: "var(--ember)",        iconBg: "rgb(192 88 69 / 0.12)"   },
+    blue:    { border: "var(--status-info)",   icon: "var(--status-info)",   iconBg: "rgb(107 155 189 / 0.10)" },
   }[accent]
 
   const isMonetaryOrPercent = value.startsWith("$") || value.endsWith("%")

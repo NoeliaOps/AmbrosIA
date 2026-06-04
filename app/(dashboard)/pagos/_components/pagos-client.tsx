@@ -148,7 +148,7 @@ export function PagosClient({ payments: initial }: Props) {
                     {formatShortDate(p.due_date)}
                   </p>
                   {p.paid_at && (
-                    <p className="mono-data" style={{ fontSize: "0.62rem", color: "#34d399" }}>{formatShortDate(p.paid_at)}</p>
+                    <p className="mono-data" style={{ fontSize: "0.62rem", color: "var(--status-active)" }}>{formatShortDate(p.paid_at)}</p>
                   )}
                 </div>
                 <div className="col-span-2 flex justify-center">

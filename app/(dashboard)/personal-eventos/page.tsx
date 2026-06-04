@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/layout/page-header"
-import { Badge } from "@/components/ui/badge"
 import { formatCurrency, formatShortDate } from "@/lib/utils"
 import { UserCheck, Clock } from "lucide-react"
 
@@ -63,12 +62,12 @@ export default async function PersonalEventosPage() {
   const totalStaff = new Set(assignments.map((a) => a.staff_members?.id)).size
 
   const EVENT_STATUS_CLASS: Record<string, string> = {
-    cotizado:      "bg-blue-100 text-blue-800 border-blue-200",
-    contratado:    "bg-emerald-100 text-emerald-800 border-emerald-200",
-    en_requisicion:"bg-amber-100 text-amber-800 border-amber-200",
-    en_compras:    "bg-orange-100 text-orange-800 border-orange-200",
-    completado:    "bg-sage/20 text-sage border-sage/30",
-    cancelado:     "bg-red-100 text-red-800 border-red-200",
+    cotizado:       "pill-info",
+    contratado:     "pill-active",
+    en_requisicion: "pill-warning",
+    en_compras:     "pill-warning",
+    completado:     "pill-done",
+    cancelado:      "pill-danger",
   }
 
   const EVENT_STATUS_LABEL: Record<string, string> = {
@@ -124,9 +123,10 @@ export default async function PersonalEventosPage() {
                     <span className="text-xs font-sans text-muted-foreground">
                       {formatShortDate(event.event_date)}
                     </span>
-                    <Badge variant="secondary" className={`font-sans text-xs border ${statusCfg}`}>
+                    <span className={`status-pill ${statusCfg}`}>
+                      <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: "currentColor" }} />
                       {EVENT_STATUS_LABEL[event.status] ?? event.status}
-                    </Badge>
+                    </span>
                   </div>
                   <span className="font-sans font-semibold tabular-nums">{formatCurrency(total)}</span>
                 </div>

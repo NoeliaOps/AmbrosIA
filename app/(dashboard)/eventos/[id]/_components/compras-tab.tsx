@@ -349,10 +349,10 @@ export function ComprasTab({
                 {purchases
                   .filter((p) => !requisitionItems.some((r) => r.ingredient_id === p.ingredient_id))
                   .map((p) => (
-                    <tr key={`extra-${p.id}`} className="border-t border-border hover:bg-muted/20 bg-amber-50/30">
+                    <tr key={`extra-${p.id}`} className="border-t border-border hover:bg-muted/20" style={{ background: "rgb(212 149 43 / 0.04)" }}>
                       <td className="px-3 py-2.5 font-medium">
                         {p.ingredients?.name ?? p.ingredient_id}
-                        <span className="ml-1.5 text-[10px] font-sans text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Extra</span>
+                        <span className="ml-1.5 text-[10px] font-sans px-1.5 py-0.5 rounded" style={{ color: "var(--amber)", background: "rgb(212 149 43 / 0.12)" }}>Extra</span>
                       </td>
                       <td className="px-3 py-2.5 text-right text-muted-foreground">—</td>
                       <td className="px-3 py-2.5 text-right text-muted-foreground">—</td>
@@ -498,7 +498,7 @@ export function ComprasTab({
           </div>
           <div className="flex justify-between text-sm font-sans text-muted-foreground">
             <span>Margen</span>
-            <span className={`tabular-nums font-medium ${margin >= 20 ? "text-emerald-700" : margin >= 10 ? "text-amber-700" : "text-red-700"}`}>
+            <span className="tabular-nums font-medium" style={{ color: margin >= 20 ? "var(--status-active)" : margin >= 10 ? "var(--amber)" : "var(--status-danger)" }}>
               {margin.toFixed(1)}%
             </span>
           </div>
