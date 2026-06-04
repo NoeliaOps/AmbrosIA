@@ -1,24 +1,25 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, UtensilsCrossed, X } from "lucide-react"
+import { Plus, Pencil, Trash2, UtensilsCrossed, X, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { DataTable, type Column } from "@/components/tables/data-table"
 import { EmptyState } from "@/components/ui/empty-state"
 import { formatCurrency } from "@/lib/utils"
 import { DISH_CATEGORIES } from "@/lib/constants"
 import { createDish, updateDish, deleteDish, type DishFormData } from "../actions"
+
+// Identidad del módulo Platillos (Recetas → brass)
+const ACCENT = "#8B6D24"
 
 type Ingredient = { id: string; name: string; unit: string; current_price: number }
 
@@ -59,6 +60,7 @@ type Props = { dishes: Dish[]; ingredients: Ingredient[] }
 
 export function DishClient({ dishes: initial, ingredients }: Props) {
   const [dishes, setDishes] = useState(initial)
+  const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Dish | null>(null)
   const [deleting, setDeleting] = useState<Dish | null>(null)
@@ -143,56 +145,52 @@ export function DishClient({ dishes: initial, ingredients }: Props) {
     setLoading(false)
   }
 
-  const columns: Column<Dish>[] = [
-    { key: "name", header: "Platillo", sortable: true,
-      cell: (row) => <span className="font-medium">{row.name}</span> },
-    { key: "category", header: "Categoría",
-      cell: (row) => row.category
-        ? <Badge variant="secondary" className="font-sans text-xs">{row.category}</Badge>
-        : "—" },
-    { key: "servings_yield", header: "Rinde",
-      cell: (row) => `${row.servings_yield} porción${row.servings_yield !== 1 ? "es" : ""}` },
-    { key: "recipe_items", header: "Ingredientes",
-      cell: (row) => <span className="text-muted-foreground">{row.recipe_items.length} ingrediente{row.recipe_items.length !== 1 ? "s" : ""}</span> },
-    { key: "cost", header: "Costo estimado / porción",
-      cell: (row) => {
-        const cost = row.recipe_items.reduce((s, r) => {
-          const p = r.ingredients?.current_price ?? 0
-          return s + p * r.quantity
-        }, 0)
-        return <span className="tabular-nums font-medium">{formatCurrency(cost / row.servings_yield)}</span>
-      }},
-    { key: "actions", header: "", className: "w-20 text-right",
-      cell: (row) => (
-        <div className="flex justify-end gap-1">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(row)}>
-            <Pencil size={14} />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(row)}>
-            <Trash2 size={14} />
-          </Button>
-        </div>
-      )},
-  ]
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return dishes
+    return dishes.filter((d) =>
+      d.name.toLowerCase().includes(q) || (d.category ?? "").toLowerCase().includes(q)
+    )
+  }, [dishes, query])
 
   return (
     <>
-      <DataTable
-        data={dishes}
-        columns={columns}
-        searchPlaceholder="Buscar platillo..."
-        searchKeys={["name", "category"] as (keyof Dish)[]}
-        actions={
-          <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
-            <Plus size={16} className="mr-1" /> Nuevo platillo
-          </Button>
-        }
-        emptyState={
-          <EmptyState icon={UtensilsCrossed} title="Sin platillos"
-            description="Agrega los platillos de tu catálogo con sus recetas."
-            action={{ label: "Agregar platillo", onClick: openCreate }} />
-        }
-      />
+      {/* Barra: búsqueda + nuevo */}
+      <div className="flex items-center gap-3 flex-wrap justify-between">
+        <div className="relative w-full sm:w-72">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar platillo o categoría…"
+            className="pl-9 h-9 font-sans"
+          />
+        </div>
+        <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
+          <Plus size={16} className="mr-1" /> Nuevo platillo
+        </Button>
+      </div>
+
+      {dishes.length === 0 ? (
+        <EmptyState icon={UtensilsCrossed} title="Sin platillos"
+          description="Agrega los platillos de tu catálogo con sus recetas."
+          action={{ label: "Agregar platillo", onClick: openCreate }} />
+      ) : filtered.length === 0 ? (
+        <div className="enterprise-card py-12 text-center">
+          <p className="text-sm font-sans text-muted-foreground">Ningún platillo coincide con “{query}”.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 stagger-children">
+          {filtered.map((dish) => (
+            <RecipeCard
+              key={dish.id}
+              dish={dish}
+              onEdit={() => openEdit(dish)}
+              onDelete={() => setDeleting(dish)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Create / Edit */}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -326,5 +324,90 @@ export function DishClient({ dishes: initial, ingredients }: Props) {
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+// Paleta para los segmentos de composición de costo (apagada, armónica)
+const SEGMENT_COLORS = ["#8B6D24", "#5F6B2F", "#9A5B3F", "#4A5568", "#6B4C6B", "#2C6E6A", "#6B4A2F", "#8A3F4D"]
+
+function RecipeCard({ dish, onEdit, onDelete }: { dish: Dish; onEdit: () => void; onDelete: () => void }) {
+  const lines = dish.recipe_items
+    .map((r) => ({
+      name: r.ingredients?.name ?? "—",
+      unit: r.ingredients?.unit ?? "",
+      price: r.ingredients?.current_price ?? 0,
+      quantity: r.quantity,
+      cost: (r.ingredients?.current_price ?? 0) * r.quantity,
+    }))
+    .sort((a, b) => b.cost - a.cost)
+
+  const total = lines.reduce((s, l) => s + l.cost, 0)
+  const perServing = total / (dish.servings_yield || 1)
+
+  return (
+    <div className="enterprise-card p-4 flex flex-col gap-3 group">
+      {/* Encabezado */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "1.1rem", fontWeight: 600, color: "var(--text-1)", letterSpacing: "-0.01em", lineHeight: 1.2 }} className="truncate">
+            {dish.name}
+          </h3>
+          <p className="mt-0.5 flex items-center gap-1.5 flex-wrap" style={{ fontFamily: "var(--font-sans)", fontSize: "0.72rem", color: "var(--text-3)" }}>
+            {dish.category && (
+              <span style={{ color: ACCENT, fontWeight: 600 }}>{dish.category}</span>
+            )}
+            {dish.category && <span>·</span>}
+            <span>rinde {dish.servings_yield} porción{dish.servings_yield !== 1 ? "es" : ""}</span>
+            <span>·</span>
+            <span>{lines.length} ingrediente{lines.length !== 1 ? "s" : ""}</span>
+          </p>
+        </div>
+        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit}><Pencil size={14} /></Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={onDelete}><Trash2 size={14} /></Button>
+        </div>
+      </div>
+
+      {/* Barra de composición del costo */}
+      {total > 0 && (
+        <div className="flex h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--surface-3, #EBEBEC)" }}>
+          {lines.map((l, i) => (
+            <div key={i} style={{ width: `${(l.cost / total) * 100}%`, background: SEGMENT_COLORS[i % SEGMENT_COLORS.length] }} />
+          ))}
+        </div>
+      )}
+
+      {/* Lista de ingredientes con precio actual y costo de línea */}
+      {lines.length > 0 ? (
+        <div className="space-y-1">
+          {lines.map((l, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm">
+              <span className="h-2 w-2 rounded-sm shrink-0" style={{ background: SEGMENT_COLORS[i % SEGMENT_COLORS.length] }} />
+              <span className="font-sans truncate flex-1" style={{ color: "var(--text-1)" }}>{l.name}</span>
+              <span className="mono-data shrink-0" style={{ fontSize: "0.7rem", color: "var(--text-3)" }}>
+                {l.quantity} {l.unit} × {formatCurrency(l.price)}
+              </span>
+              <span className="mono-data shrink-0 text-right" style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-1)", width: "4.5rem" }}>
+                {formatCurrency(l.cost)}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs font-sans text-muted-foreground italic">Sin receta — agrega ingredientes para calcular el costo.</p>
+      )}
+
+      {/* Totales */}
+      <div className="mt-auto pt-3 flex items-end justify-between" style={{ borderTop: "1px solid var(--border-def, #EBEBEC)" }}>
+        <div>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-3)" }}>Costo receta</p>
+          <p className="mono-data" style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-2)" }}>{formatCurrency(total)}</p>
+        </div>
+        <div className="text-right">
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-3)" }}>Costo / porción</p>
+          <p className="mono-data" style={{ fontSize: "1.25rem", fontWeight: 700, color: ACCENT, lineHeight: 1.1 }}>{formatCurrency(perServing)}</p>
+        </div>
+      </div>
+    </div>
   )
 }
