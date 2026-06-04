@@ -32,14 +32,15 @@ type Event = {
   clients: { name: string } | null
 }
 
-const STATUS_CONFIG: Record<string, { label: string; dot: string; text: string; bg: string }> = {
-  cotizado:       { label: "Cotizado",       dot: "bg-blue-400",    text: "text-blue-400",    bg: "" },
-  contratado:     { label: "Contratado",     dot: "bg-emerald-400", text: "text-emerald-400", bg: "" },
-  en_requisicion: { label: "En requisición", dot: "bg-amber-400",   text: "text-amber-400",   bg: "" },
-  en_compras:     { label: "En compras",     dot: "bg-orange-400",  text: "text-orange-400",  bg: "" },
-  completado:     { label: "Completado",     dot: "bg-sage",        text: "text-sage",         bg: "" },
-  cancelado:      { label: "Cancelado",      dot: "bg-red-400",     text: "text-red-400",      bg: "" },
-}
+// Etapas del ciclo de vida del evento (pipeline). Color hex por etapa.
+const STAGES = [
+  { key: "cotizado",       label: "Cotizado",       color: "#3D5A80" },
+  { key: "contratado",     label: "Contratado",     color: "#4C4F8A" },
+  { key: "en_requisicion", label: "En requisición", color: "#2C6E6A" },
+  { key: "en_compras",     label: "En compras",     color: "#9A5B3F" },
+  { key: "completado",     label: "Completado",     color: "#2F6B4F" },
+  { key: "cancelado",      label: "Cancelado",      color: "#991B1B" },
+] as const
 
 const schema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
@@ -72,7 +73,6 @@ export function EventList({ events: initial, clients: initialClients, page = 1, 
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
   const [clientMode, setClientMode] = useState<"existing" | "new">("existing")
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormValues>({
@@ -119,109 +119,126 @@ export function EventList({ events: initial, clients: initialClients, page = 1, 
     router.push(`/eventos/${created!.id}`)
   }
 
+  const q = search.toLowerCase()
   const filtered = events.filter((e) => {
-    const matchStatus = statusFilter === "all" || e.status === statusFilter
-    const q = search.toLowerCase()
-    const matchSearch = !q || e.name.toLowerCase().includes(q) ||
+    return !q || e.name.toLowerCase().includes(q) ||
       (e.clients?.name ?? "").toLowerCase().includes(q) ||
       (e.location ?? "").toLowerCase().includes(q)
-    return matchStatus && matchSearch
   })
+
+  // Agrupar por etapa del pipeline (sólo etapas con eventos)
+  const pipeline = STAGES
+    .map((stage) => ({ stage, items: filtered.filter((e) => e.status === stage.key) }))
+    .filter((g) => g.items.length > 0)
 
   return (
     <>
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex gap-2 flex-1">
-          <div className="relative flex-1 max-w-xs">
-            <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Buscar evento o cliente..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 font-sans h-9"
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
-            <SelectTrigger className="font-sans h-9 w-44">
-              <SelectValue placeholder="Todos los estados" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="font-sans">Todos</SelectItem>
-              {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-                <SelectItem key={k} value={k} className="font-sans">{v.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="relative flex-1 max-w-xs w-full">
+          <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar evento o cliente..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8 font-sans h-9"
+          />
         </div>
         <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
           <Plus size={16} className="mr-1" /> Nuevo evento
         </Button>
       </div>
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={CalendarDays}
-          title={search || statusFilter !== "all" ? "Sin resultados" : "Sin eventos"}
-          description={search || statusFilter !== "all"
-            ? "Prueba con otros filtros o términos de búsqueda."
-            : "Crea tu primer evento para comenzar el flujo de trabajo."}
-          action={!search && statusFilter === "all" ? { label: "Crear evento", onClick: openCreate } : undefined}
-        />
-      ) : (
-        <div className="enterprise-card overflow-hidden divide-y divide-border">
-          {filtered.map((event) => {
-            const cfg = STATUS_CONFIG[event.status]
-            const d = new Date(event.event_date + "T12:00:00")
+      {/* Resumen del pipeline */}
+      {filtered.length > 0 && (
+        <div className="enterprise-card flex flex-wrap items-stretch gap-y-2 px-1 py-2">
+          {STAGES.filter((s) => s.key !== "cancelado").map((stage, i, arr) => {
+            const n = filtered.filter((e) => e.status === stage.key).length
             return (
-              <div
-                key={event.id}
-                onClick={() => router.push(`/eventos/${event.id}`)}
-                className="w-full text-left flex items-center gap-4 px-4 py-3 table-row-hover cursor-pointer"
-              >
-                <div className="w-10 text-center shrink-0">
-                  <p className="mono-data" style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-1)", lineHeight: 1 }}>{d.getDate()}</p>
-                  <p style={{ fontFamily: "var(--font-mono), ui-monospace, monospace", fontSize: "0.52rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-3)", marginTop: "0.2rem" }}>
-                    {d.toLocaleDateString("es-MX", { month: "short" })}
-                  </p>
+              <div key={stage.key} className="flex items-center">
+                <div className="px-3 text-center" style={{ minWidth: "5.5rem" }}>
+                  <p className="mono-data" style={{ fontSize: "1.15rem", fontWeight: 700, color: n > 0 ? stage.color : "var(--text-3)", lineHeight: 1 }}>{n}</p>
+                  <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.65rem", color: "var(--text-2)", marginTop: "0.15rem" }}>{stage.label}</p>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "0.9375rem", fontWeight: 500, color: "var(--text-1)", letterSpacing: "0.01em", lineHeight: 1.3 }} className="truncate">{event.name}</p>
-                  <p style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", fontSize: "0.7rem", color: "var(--text-2)" }} className="truncate mt-0.5">
-                    {event.clients?.name ?? "Sin cliente"}
-                    {event.guest_count ? ` · ${event.guest_count} inv.` : ""}
-                    {event.location ? ` · ${event.location}` : ""}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  {event.event_type && (
-                    <span style={{ fontFamily: "var(--font-mono), ui-monospace, monospace", fontSize: "0.62rem", color: "var(--text-3)", letterSpacing: "0.06em" }} className="hidden md:block">{event.event_type}</span>
-                  )}
-                  {cfg && (
-                    <span className={`status-pill ${cfg.bg} ${cfg.text}`} style={{ borderRadius: "4px" }}>
-                      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${cfg.dot}`} />
-                      {cfg.label}
-                    </span>
-                  )}
-                  <a
-                    href={googleCalendarEventUrl({
-                      title: event.name,
-                      startDate: event.event_date,
-                      location: event.location ?? undefined,
-                      details: `Cliente: ${event.clients?.name ?? "—"}\nInvitados: ${event.guest_count}`,
-                    })}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    title="Agregar a Google Calendar"
-                    className="text-muted-foreground/50 hover:text-gold-dark transition-colors p-0.5 rounded"
-                  >
-                    <Calendar size={13} />
-                  </a>
-                  <ChevronRight size={14} className="text-muted-foreground/40" />
-                </div>
+                {i < arr.length - 1 && <ChevronRight size={13} className="text-muted-foreground/30 shrink-0" />}
               </div>
             )
           })}
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={CalendarDays}
+          title={search ? "Sin resultados" : "Sin eventos"}
+          description={search
+            ? "Prueba con otros términos de búsqueda."
+            : "Crea tu primer evento para comenzar el flujo de trabajo."}
+          action={!search ? { label: "Crear evento", onClick: openCreate } : undefined}
+        />
+      ) : (
+        <div className="space-y-6">
+          {pipeline.map(({ stage, items }) => (
+            <section key={stage.key}>
+              {/* Cabecera de etapa */}
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: stage.color }} />
+                <h3 style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "1rem", fontWeight: 600, color: "var(--text-1)" }}>{stage.label}</h3>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.7rem", color: "var(--text-3)" }}>{items.length}</span>
+                <span className="flex-1 h-px ml-1" style={{ background: "var(--border-def, #EBEBEC)" }} />
+              </div>
+
+              {/* Tarjetas de evento */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 stagger-children">
+                {items.map((event) => {
+                  const d = new Date(event.event_date + "T12:00:00")
+                  return (
+                    <div
+                      key={event.id}
+                      onClick={() => router.push(`/eventos/${event.id}`)}
+                      className="enterprise-card cursor-pointer p-3.5 flex items-start gap-3 group"
+                      style={{ borderLeft: `3px solid ${stage.color}` }}
+                    >
+                      {/* Fecha */}
+                      <div className="shrink-0 text-center grid place-items-center rounded-lg" style={{ width: "2.75rem", height: "2.75rem", background: `color-mix(in srgb, ${stage.color} 9%, white)` }}>
+                        <p className="mono-data" style={{ fontSize: "1.1rem", fontWeight: 700, color: stage.color, lineHeight: 1 }}>{d.getDate()}</p>
+                        <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.48rem", letterSpacing: "0.12em", textTransform: "uppercase", color: stage.color, opacity: 0.8 }}>
+                          {d.toLocaleDateString("es-MX", { month: "short" }).replace(".", "")}
+                        </p>
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "0.95rem", fontWeight: 500, color: "var(--text-1)", lineHeight: 1.25 }} className="truncate">{event.name}</p>
+                        <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.72rem", color: "var(--text-2)" }} className="truncate mt-0.5">
+                          {event.clients?.name ?? "Sin cliente"}{event.guest_count ? ` · ${event.guest_count} inv.` : ""}
+                        </p>
+                        {event.location && (
+                          <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.68rem", color: "var(--text-3)" }} className="truncate mt-0.5">{event.location}</p>
+                        )}
+                      </div>
+
+                      {/* Google Calendar */}
+                      <a
+                        href={googleCalendarEventUrl({
+                          title: event.name,
+                          startDate: event.event_date,
+                          location: event.location ?? undefined,
+                          details: `Cliente: ${event.clients?.name ?? "—"}\nInvitados: ${event.guest_count}`,
+                        })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Agregar a Google Calendar"
+                        className="shrink-0 text-muted-foreground/40 hover:text-gold-dark transition-colors p-0.5 rounded opacity-0 group-hover:opacity-100"
+                      >
+                        <Calendar size={13} />
+                      </a>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          ))}
         </div>
       )}
 

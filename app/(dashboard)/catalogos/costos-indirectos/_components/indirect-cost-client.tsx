@@ -1,23 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Calculator } from "lucide-react"
+import { Plus, Pencil, Trash2, Calculator, Search, Hash, Users as UsersIcon, Percent } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { DataTable, type Column } from "@/components/tables/data-table"
 import { EmptyState } from "@/components/ui/empty-state"
 import { formatCurrency } from "@/lib/utils"
 import { INDIRECT_COST_ALLOCATION } from "@/lib/constants"
 import { createIndirectCost, updateIndirectCost, deleteIndirectCost, type IndirectCostFormData } from "../actions"
+
+// Identidad del módulo (Catálogo → cacao)
+const ACCENT = "#6B4A2F"
 
 type AllocationMethod = "fixed" | "per_guest" | "percentage"
 
@@ -47,9 +48,11 @@ const ALLOCATION_LABELS: Record<AllocationMethod, string> = {
   per_guest: "Por persona",
   percentage: "Porcentaje",
 }
+const ALLOCATION_ICON = { fixed: Hash, per_guest: UsersIcon, percentage: Percent } as const
 
 export function IndirectCostClient({ costs: initial }: Props) {
   const [costs, setCosts] = useState(initial)
+  const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<IndirectCost | null>(null)
   const [deleting, setDeleting] = useState<IndirectCost | null>(null)
@@ -116,61 +119,63 @@ export function IndirectCostClient({ costs: initial }: Props) {
     setLoading(false)
   }
 
-  const columns: Column<IndirectCost>[] = [
-    { key: "name", header: "Concepto", sortable: true,
-      cell: (row) => <span className="font-medium">{row.name}</span> },
-    { key: "allocation_method", header: "Método",
-      cell: (row) => (
-        <Badge variant="secondary" className="font-sans text-xs">
-          {ALLOCATION_LABELS[row.allocation_method]}
-        </Badge>
-      )},
-    { key: "default_amount", header: "Monto / valor por defecto", sortable: true,
-      cell: (row) => (
-        <span className="tabular-nums font-medium">
-          {row.allocation_method === "percentage"
-            ? `${row.default_amount}%`
-            : formatCurrency(row.default_amount)}
-        </span>
-      )},
-    { key: "is_active", header: "Estado",
-      cell: (row) => (
-        <span className={`status-pill ${row.is_active ? "pill-active" : "pill-draft"}`}>
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />
-          {row.is_active ? "Activo" : "Inactivo"}
-        </span>
-      )},
-    { key: "actions", header: "", className: "w-20 text-right",
-      cell: (row) => (
-        <div className="flex justify-end gap-1">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(row)}>
-            <Pencil size={14} />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(row)}>
-            <Trash2 size={14} />
-          </Button>
-        </div>
-      )},
-  ]
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return costs
+    return costs.filter((c) => c.name.toLowerCase().includes(q))
+  }, [costs, query])
 
   return (
     <>
-      <DataTable
-        data={costs}
-        columns={columns}
-        searchPlaceholder="Buscar concepto..."
-        searchKeys={["name"] as (keyof IndirectCost)[]}
-        actions={
-          <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
-            <Plus size={16} className="mr-1" /> Nuevo costo
-          </Button>
-        }
-        emptyState={
-          <EmptyState icon={Calculator} title="Sin costos indirectos"
-            description="Define los costos fijos y variables que aplican a tus eventos."
-            action={{ label: "Agregar costo", onClick: openCreate }} />
-        }
-      />
+      <div className="flex items-center gap-3 flex-wrap justify-between">
+        <div className="relative w-full sm:w-72">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar concepto…" className="pl-9 h-9 font-sans" />
+        </div>
+        <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
+          <Plus size={16} className="mr-1" /> Nuevo costo
+        </Button>
+      </div>
+
+      {costs.length === 0 ? (
+        <EmptyState icon={Calculator} title="Sin costos indirectos"
+          description="Define los costos fijos y variables que aplican a tus eventos."
+          action={{ label: "Agregar costo", onClick: openCreate }} />
+      ) : filtered.length === 0 ? (
+        <div className="enterprise-card py-12 text-center">
+          <p className="text-sm font-sans text-muted-foreground">Ningún concepto coincide con “{query}”.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 stagger-children">
+          {filtered.map((c) => {
+            const Icon = ALLOCATION_ICON[c.allocation_method]
+            return (
+              <div key={c.id} className="enterprise-card p-4 flex flex-col gap-3 group" style={{ opacity: c.is_active ? 1 : 0.6 }}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "1rem", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.2 }} className="truncate">{c.name}</p>
+                    <span className="inline-flex items-center gap-1 mt-1" style={{ fontFamily: "var(--font-sans)", fontSize: "0.68rem", fontWeight: 600, color: ACCENT, background: `color-mix(in srgb, ${ACCENT} 10%, white)`, padding: "0.1rem 0.45rem", borderRadius: "9999px" }}>
+                      <Icon size={11} /> {ALLOCATION_LABELS[c.allocation_method]}
+                    </span>
+                  </div>
+                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(c)}><Pencil size={14} /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(c)}><Trash2 size={14} /></Button>
+                  </div>
+                </div>
+                {c.description && <p className="text-xs font-sans text-muted-foreground line-clamp-2">{c.description}</p>}
+                <div className="mt-auto pt-2" style={{ borderTop: "1px solid var(--border-def, #EBEBEC)" }}>
+                  <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.5rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-3)" }}>Valor por defecto</p>
+                  <p className="mono-data" style={{ fontSize: "1.3rem", fontWeight: 700, color: ACCENT, lineHeight: 1.1 }}>
+                    {c.allocation_method === "percentage" ? `${c.default_amount}%` : formatCurrency(c.default_amount)}
+                    {c.allocation_method === "per_guest" && <span style={{ fontSize: "0.7rem", color: "var(--text-3)", fontWeight: 400 }}> / persona</span>}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Create / Edit */}
       <Dialog open={open} onOpenChange={setOpen}>

@@ -3,22 +3,22 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/layout/page-header"
 import { formatCurrency, formatShortDate } from "@/lib/utils"
-import { FileSignature, CheckCircle2, Clock, Send, ExternalLink } from "lucide-react"
+import { FileSignature, ArrowRight, Check } from "lucide-react"
 
 export const metadata: Metadata = { title: "Contratos" }
 
-const STATUS_CFG: Record<string, { label: string; cls: string }> = {
-  borrador:  { label: "Borrador",  cls: "pill-draft"  },
-  enviado:   { label: "Enviado",   cls: "pill-info"   },
-  firmado:   { label: "Firmado",   cls: "pill-active" },
-  cancelado: { label: "Cancelado", cls: "pill-danger" },
-}
+// Identidad del módulo (Comercial → ciruela)
+const ACCENT = "#6B4C6B"
 
-const ACCENT_CFG = {
-  gold:    { border: "var(--amber)",         iconBg: "rgb(212 149 43 / 0.10)",  iconColor: "var(--amber)"         },
-  emerald: { border: "var(--status-active)", iconBg: "rgb(82 182 138 / 0.10)",  iconColor: "var(--status-active)" },
-  blue:    { border: "var(--status-info)",   iconBg: "rgb(107 155 189 / 0.10)", iconColor: "var(--status-info)"   },
-} as const
+const STATUS_CFG: Record<string, { label: string; color: string }> = {
+  borrador:  { label: "Borrador",  color: "#6B7280" },
+  enviado:   { label: "Enviado",   color: "#3D5A80" },
+  firmado:   { label: "Firmado",   color: "#2F6B4F" },
+  cancelado: { label: "Cancelado", color: "#991B1B" },
+}
+const GROUP_ORDER = ["enviado", "borrador", "firmado", "cancelado"]
+// Pasos de firma para el tracker
+const SIGN_FLOW = ["borrador", "enviado", "firmado"] as const
 
 type ContractRow = {
   id: string
@@ -39,104 +39,139 @@ export default async function ContratosPage() {
       quotes(total)`)
     .order("created_at", { ascending: false })
 
-  const contracts  = (rawContracts ?? []) as unknown as ContractRow[]
-  const firmados   = contracts.filter((c) => c.status === "firmado")
-  const borradores = contracts.filter((c) => c.status === "borrador")
-  const enviados   = contracts.filter((c) => c.status === "enviado")
+  const contracts = (rawContracts ?? []) as unknown as ContractRow[]
+  const firmados = contracts.filter((c) => c.status === "firmado")
   const totalFirmado = firmados.reduce((s, c) => s + (c.quotes?.total ?? 0), 0)
+  const porFirmar = contracts.filter((c) => c.status === "enviado" || c.status === "borrador").length
+
+  const grouped = GROUP_ORDER
+    .map((status) => ({ status, items: contracts.filter((c) => c.status === status) }))
+    .filter((g) => g.items.length > 0)
 
   return (
-    <div className="space-y-8 pb-8">
+    <div className="space-y-6 pb-8">
       <PageHeader
         title="Contratos"
         description="Contratos generados a partir de cotizaciones aprobadas."
-        meta={`${contracts.length} total`}
+        meta={porFirmar > 0 ? `${porFirmar} por firmar` : undefined}
       />
 
-      {/* KPI row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 stagger-children">
-        {[
-          { label: "Total contratos",  value: String(contracts.length), sub: "Todos los eventos", icon: FileSignature, accent: "gold" as const },
-          { label: "Firmados",         value: String(firmados.length),  sub: formatCurrency(totalFirmado), icon: CheckCircle2, accent: "emerald" as const },
-          { label: "Enviados",         value: String(enviados.length),  sub: "Pendientes de firma", icon: Send, accent: "blue" as const },
-          { label: "Borradores",       value: String(borradores.length), sub: "Sin enviar al cliente", icon: Clock, accent: "gold" as const },
-        ].map(({ label, value, sub, icon: Icon, accent }) => {
-          const ac = ACCENT_CFG[accent]
-          return (
-            <div key={label} className="kpi-tile" style={{ borderLeftColor: ac.border }}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="space-y-1 min-w-0">
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-3)" }}>{label}</p>
-                  <p className="mono-data" style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-1)", lineHeight: 1 }}>{value}</p>
-                  <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.7rem", color: "var(--text-3)" }}>{sub}</p>
-                </div>
-                <div className="shrink-0 rounded p-1.5" style={{ background: ac.iconBg, color: ac.iconColor }}><Icon size={15} /></div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Table */}
-      <div className="enterprise-card overflow-hidden">
-        <div className="table-header px-4 py-2.5 grid grid-cols-12 gap-3">
-          <span className="col-span-4 text-[11px] font-sans font-semibold uppercase tracking-wider text-muted-foreground">Evento / Cliente</span>
-          <span className="col-span-2 text-[11px] font-sans font-semibold uppercase tracking-wider text-muted-foreground">Fecha evento</span>
-          <span className="col-span-2 text-[11px] font-sans font-semibold uppercase tracking-wider text-muted-foreground text-right">Valor</span>
-          <span className="col-span-2 text-[11px] font-sans font-semibold uppercase tracking-wider text-muted-foreground text-center">Creado</span>
-          <span className="col-span-1 text-[11px] font-sans font-semibold uppercase tracking-wider text-muted-foreground text-center">Estado</span>
-          <span className="col-span-1" />
+      {contracts.length === 0 ? (
+        <div className="enterprise-card p-16 text-center space-y-2">
+          <FileSignature size={28} className="mx-auto text-muted-foreground/30" />
+          <p className="text-sm font-sans text-muted-foreground">No hay contratos aún.</p>
+          <p className="text-xs font-sans text-muted-foreground/60">Genera un contrato desde la pestaña de cotización de un evento.</p>
         </div>
-
-        {contracts.length === 0 ? (
-          <div className="py-16 text-center space-y-2">
-            <FileSignature size={28} className="mx-auto text-muted-foreground/20" />
-            <p className="text-sm font-sans text-muted-foreground">No hay contratos aún.</p>
-            <p className="text-xs font-sans text-muted-foreground/60">Genera un contrato desde la pestaña de cotización de un evento.</p>
+      ) : (
+        <>
+          {/* Resumen */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[
+              { label: "Contratos", value: String(contracts.length), sub: "en total", accent: ACCENT },
+              { label: "Firmados", value: String(firmados.length), sub: formatCurrency(totalFirmado), accent: "#2F6B4F" },
+              { label: "Por firmar", value: String(porFirmar), sub: "enviados + borradores", accent: "#3D5A80" },
+            ].map((kpi) => (
+              <div key={kpi.label} className="enterprise-card p-3.5" style={{ borderLeft: `3px solid ${kpi.accent}` }}>
+                <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-3)" }}>{kpi.label}</p>
+                <p className="mono-data" style={{ fontSize: "1.35rem", fontWeight: 700, color: "var(--text-1)", lineHeight: 1.15, marginTop: "0.15rem" }}>{kpi.value}</p>
+                <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.68rem", color: "var(--text-3)" }}>{kpi.sub}</p>
+              </div>
+            ))}
           </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {contracts.map((c) => {
-              const cfg = STATUS_CFG[c.status]
-              const ev  = c.events
+
+          {/* Contratos agrupados por estado */}
+          <div className="space-y-6">
+            {grouped.map(({ status, items }) => {
+              const cfg = STATUS_CFG[status]
               return (
-                <Link key={c.id} href={ev ? `/eventos/${ev.id}?tab=contrato` : "#"}
-                  className="grid grid-cols-12 gap-3 items-center px-4 py-3 table-row-hover">
-                  <div className="col-span-4 min-w-0">
-                    <p style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "0.9375rem", fontWeight: 500, color: "var(--text-1)", letterSpacing: "0.01em", lineHeight: 1.3 }} className="truncate">{ev?.name ?? "—"}</p>
-                    <p style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", fontSize: "0.7rem", color: "var(--text-2)" }} className="truncate mt-0.5">{ev?.clients?.name ?? "Sin cliente"}</p>
+                <section key={status}>
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: cfg.color }} />
+                    <h3 style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "1rem", fontWeight: 600, color: "var(--text-1)" }}>{cfg.label}</h3>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.7rem", color: "var(--text-3)" }}>{items.length}</span>
+                    <span className="flex-1 h-px ml-1" style={{ background: "var(--border-def, #EBEBEC)" }} />
                   </div>
-                  <div className="col-span-2">
-                    <p className="mono-data" style={{ fontSize: "0.8rem", color: "var(--text-2)" }}>{ev ? formatShortDate(ev.event_date) : "—"}</p>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 stagger-children">
+                    {items.map((c) => {
+                      const ev = c.events
+                      const currentStep = SIGN_FLOW.indexOf(c.status as (typeof SIGN_FLOW)[number])
+                      const cancelled = c.status === "cancelado"
+                      return (
+                        <Link
+                          key={c.id}
+                          href={ev ? `/eventos/${ev.id}?tab=contrato` : "#"}
+                          className="enterprise-card p-4 flex flex-col gap-3 table-row-hover group"
+                          style={{ borderLeft: `3px solid ${cfg.color}` }}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "1.05rem", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.2 }} className="truncate">
+                                {ev?.name ?? "—"}
+                              </p>
+                              <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.72rem", color: "var(--text-2)" }} className="truncate mt-0.5">
+                                {ev?.clients?.name ?? "Sin cliente"}
+                                {ev?.event_date ? ` · ${formatShortDate(ev.event_date)}` : ""}
+                              </p>
+                            </div>
+                            <span style={{
+                              fontFamily: "var(--font-mono)", fontSize: "0.58rem", fontWeight: 600,
+                              letterSpacing: "0.04em", color: ACCENT,
+                              background: `color-mix(in srgb, ${ACCENT} 10%, white)`,
+                              padding: "0.15rem 0.45rem", borderRadius: "4px", whiteSpace: "nowrap",
+                            }} className="shrink-0">#{c.id.slice(-6).toUpperCase()}</span>
+                          </div>
+
+                          {/* Tracker de firma */}
+                          {!cancelled ? (
+                            <div className="flex items-center gap-1.5">
+                              {SIGN_FLOW.map((step, i) => {
+                                const reached = i <= currentStep
+                                const isLast = i === SIGN_FLOW.length - 1
+                                return (
+                                  <div key={step} className="flex items-center gap-1.5 flex-1 last:flex-none">
+                                    <span className="grid place-items-center rounded-full shrink-0" style={{
+                                      height: "1.1rem", width: "1.1rem",
+                                      background: reached ? cfg.color : "var(--card)",
+                                      color: "#fff",
+                                      boxShadow: reached ? "none" : `inset 0 0 0 1.5px var(--surface-3, #EBEBEC)`,
+                                    }}>
+                                      {reached && isLast ? <Check size={11} strokeWidth={3} /> : reached ? <span className="h-1 w-1 rounded-full bg-white" /> : null}
+                                    </span>
+                                    <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.04em", textTransform: "uppercase", color: reached ? cfg.color : "var(--text-3)" }}>
+                                      {STATUS_CFG[step].label}
+                                    </span>
+                                    {!isLast && <span className="flex-1 h-px" style={{ background: i < currentStep ? cfg.color : "var(--surface-3, #EBEBEC)" }} />}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ) : (
+                            <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.72rem", color: "#991B1B" }}>Contrato cancelado</p>
+                          )}
+
+                          <div className="flex items-end justify-between gap-3 mt-auto pt-2" style={{ borderTop: "1px solid var(--border-def, #EBEBEC)" }}>
+                            <div>
+                              <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.5rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-3)" }}>Valor</p>
+                              <p className="mono-data" style={{ fontSize: "1.15rem", fontWeight: 700, color: "var(--text-1)", lineHeight: 1.1 }}>
+                                {c.quotes?.total != null ? formatCurrency(c.quotes.total) : "—"}
+                              </p>
+                              {c.signed_at && (
+                                <p className="mono-data" style={{ fontSize: "0.62rem", color: "#2F6B4F" }}>firmado {formatShortDate(c.signed_at)}</p>
+                              )}
+                            </div>
+                            <ArrowRight size={15} className="text-muted-foreground/40 group-hover:text-gold-dark transition-colors" />
+                          </div>
+                        </Link>
+                      )
+                    })}
                   </div>
-                  <div className="col-span-2 text-right">
-                    <p className="mono-data" style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--text-1)" }}>
-                      {c.quotes?.total != null ? formatCurrency(c.quotes.total) : "—"}
-                    </p>
-                  </div>
-                  <div className="col-span-2 text-center">
-                    <p className="mono-data" style={{ fontSize: "0.8rem", color: "var(--text-2)" }}>{formatShortDate(c.created_at)}</p>
-                    {c.signed_at && (
-                      <p className="mono-data mt-0.5" style={{ fontSize: "0.62rem", color: "var(--status-active)" }}>Firmado {formatShortDate(c.signed_at)}</p>
-                    )}
-                  </div>
-                  <div className="col-span-1 flex justify-center">
-                    {cfg && (
-                      <span className={`status-pill ${cfg.cls}`}>
-                        <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: "currentColor" }} />
-                        {cfg.label}
-                      </span>
-                    )}
-                  </div>
-                  <div className="col-span-1 flex justify-end">
-                    <ExternalLink size={13} className="text-muted-foreground/40" />
-                  </div>
-                </Link>
+                </section>
               )
             })}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   )
 }

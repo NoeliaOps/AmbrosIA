@@ -1,20 +1,25 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Truck } from "lucide-react"
+import { Plus, Pencil, Trash2, Truck, Search, Phone, Mail, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { DataTable, type Column } from "@/components/tables/data-table"
 import { EmptyState } from "@/components/ui/empty-state"
-import { Badge } from "@/components/ui/badge"
 import { createSupplier, updateSupplier, deleteSupplier, type SupplierFormData } from "../actions"
+
+// Identidad del módulo (Catálogo → azul pizarra)
+const ACCENT = "#3D5A80"
+
+function initials(name: string) {
+  return name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
+}
 
 type Supplier = {
   id: string
@@ -40,6 +45,7 @@ type FormValues = z.infer<typeof schema>
 
 export function SupplierClient({ suppliers: initial }: { suppliers: Supplier[] }) {
   const [suppliers, setSuppliers] = useState(initial)
+  const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Supplier | null>(null)
   const [deleting, setDeleting] = useState<Supplier | null>(null)
@@ -105,51 +111,78 @@ export function SupplierClient({ suppliers: initial }: { suppliers: Supplier[] }
     setLoading(false)
   }
 
-  const columns: Column<Supplier>[] = [
-    { key: "name", header: "Nombre", sortable: true,
-      cell: (row) => <span className="font-medium">{row.name}</span> },
-    { key: "category", header: "Categoría",
-      cell: (row) => row.category ? <Badge variant="secondary" className="font-sans text-xs">{row.category}</Badge> : "—" },
-    { key: "contact_name", header: "Contacto",
-      cell: (row) => row.contact_name ?? "—" },
-    { key: "phone", header: "Teléfono",
-      cell: (row) => row.phone ?? "—" },
-    { key: "email", header: "Correo",
-      cell: (row) => row.email ?? "—" },
-    { key: "actions", header: "", className: "w-20 text-right",
-      cell: (row) => (
-        <div className="flex justify-end gap-1">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(row)}>
-            <Pencil size={14} />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(row)}>
-            <Trash2 size={14} />
-          </Button>
-        </div>
-      )},
-  ]
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return suppliers
+    return suppliers.filter((s) =>
+      s.name.toLowerCase().includes(q) ||
+      (s.category ?? "").toLowerCase().includes(q) ||
+      (s.contact_name ?? "").toLowerCase().includes(q)
+    )
+  }, [suppliers, query])
 
   return (
     <>
-      <DataTable
-        data={suppliers}
-        columns={columns}
-        searchPlaceholder="Buscar proveedor..."
-        searchKeys={["name", "category", "contact_name"] as (keyof Supplier)[]}
-        actions={
-          <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
-            <Plus size={16} className="mr-1" /> Nuevo proveedor
-          </Button>
-        }
-        emptyState={
-          <EmptyState
-            icon={Truck}
-            title="Sin proveedores"
-            description="Agrega tus proveedores para comenzar."
-            action={{ label: "Agregar proveedor", onClick: openCreate }}
-          />
-        }
-      />
+      <div className="flex items-center gap-3 flex-wrap justify-between">
+        <div className="relative w-full sm:w-72">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar proveedor o categoría…" className="pl-9 h-9 font-sans" />
+        </div>
+        <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
+          <Plus size={16} className="mr-1" /> Nuevo proveedor
+        </Button>
+      </div>
+
+      {suppliers.length === 0 ? (
+        <EmptyState icon={Truck} title="Sin proveedores"
+          description="Agrega tus proveedores para comenzar."
+          action={{ label: "Agregar proveedor", onClick: openCreate }} />
+      ) : filtered.length === 0 ? (
+        <div className="enterprise-card py-12 text-center">
+          <p className="text-sm font-sans text-muted-foreground">Ningún proveedor coincide con “{query}”.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 stagger-children">
+          {filtered.map((s) => (
+            <div key={s.id} className="enterprise-card p-4 flex flex-col gap-3 group">
+              <div className="flex items-start gap-3">
+                <div className="shrink-0 grid place-items-center rounded-xl mono-data" style={{ height: "2.5rem", width: "2.5rem", background: `color-mix(in srgb, ${ACCENT} 11%, white)`, color: ACCENT, fontSize: "0.8rem", fontWeight: 700 }}>
+                  {initials(s.name)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "1rem", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.2 }} className="truncate">{s.name}</p>
+                  {s.category && <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.72rem", fontWeight: 600, color: ACCENT }} className="truncate">{s.category}</p>}
+                </div>
+                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(s)}><Pencil size={14} /></Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(s)}><Trash2 size={14} /></Button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 text-sm" style={{ borderTop: "1px solid var(--border-def, #EBEBEC)", paddingTop: "0.75rem" }}>
+                {s.contact_name && (
+                  <p className="flex items-center gap-2 font-sans" style={{ color: "var(--text-2)" }}>
+                    <User size={13} className="text-muted-foreground shrink-0" /> {s.contact_name}
+                  </p>
+                )}
+                {s.phone ? (
+                  <a href={`tel:${s.phone.replace(/\s/g, "")}`} className="flex items-center gap-2 font-sans hover:text-gold-dark transition-colors" style={{ color: "var(--text-2)" }}>
+                    <Phone size={13} className="text-muted-foreground shrink-0" /> {s.phone}
+                  </a>
+                ) : null}
+                {s.email ? (
+                  <a href={`mailto:${s.email}`} className="flex items-center gap-2 font-sans hover:text-gold-dark transition-colors truncate" style={{ color: "var(--text-2)" }}>
+                    <Mail size={13} className="text-muted-foreground shrink-0" /> <span className="truncate">{s.email}</span>
+                  </a>
+                ) : null}
+                {!s.contact_name && !s.phone && !s.email && (
+                  <p className="font-sans text-xs italic text-muted-foreground">Sin datos de contacto.</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Create / Edit dialog */}
       <Dialog open={open} onOpenChange={setOpen}>

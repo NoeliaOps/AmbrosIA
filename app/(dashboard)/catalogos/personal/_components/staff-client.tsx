@@ -1,23 +1,28 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Users } from "lucide-react"
+import { Plus, Pencil, Trash2, Users, Search, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { DataTable, type Column } from "@/components/tables/data-table"
 import { EmptyState } from "@/components/ui/empty-state"
 import { formatCurrency } from "@/lib/utils"
 import { STAFF_POSITIONS } from "@/lib/constants"
 import { createStaff, updateStaff, deleteStaff, type StaffFormData } from "../actions"
+
+// Identidad del módulo (Catálogo → acero)
+const ACCENT = "#4A5568"
+const RATE_SHORT: Record<string, string> = { hourly: "/hr", daily: "/día", event: "/evento" }
+function initials(name: string) {
+  return name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
+}
 
 type StaffMember = {
   id: string
@@ -28,12 +33,6 @@ type StaffMember = {
   phone: string | null
   notes: string | null
   is_active: boolean
-}
-
-const RATE_TYPE_LABEL: Record<string, string> = {
-  hourly: "Por hora",
-  daily: "Por día",
-  event: "Por evento",
 }
 
 const schema = z.object({
@@ -52,6 +51,7 @@ type Props = { staff: StaffMember[] }
 
 export function StaffClient({ staff: initial }: Props) {
   const [staff, setStaff] = useState(initial)
+  const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<StaffMember | null>(null)
   const [deleting, setDeleting] = useState<StaffMember | null>(null)
@@ -123,58 +123,64 @@ export function StaffClient({ staff: initial }: Props) {
     setLoading(false)
   }
 
-  const columns: Column<StaffMember>[] = [
-    { key: "name", header: "Nombre", sortable: true,
-      cell: (row) => <span className="font-medium">{row.name}</span> },
-    { key: "position", header: "Puesto",
-      cell: (row) => <Badge variant="secondary" className="font-sans text-xs">{row.position}</Badge> },
-    { key: "rate", header: "Tarifa", sortable: true,
-      cell: (row) => (
-        <span className="tabular-nums font-medium">
-          {formatCurrency(row.rate)}
-          <span className="text-muted-foreground font-normal ml-1 text-xs">/{RATE_TYPE_LABEL[row.rate_type] ?? row.rate_type}</span>
-        </span>
-      )},
-    { key: "phone", header: "Teléfono",
-      cell: (row) => <span className="text-muted-foreground">{row.phone ?? "—"}</span> },
-    { key: "is_active", header: "Estado",
-      cell: (row) => (
-        <span className={`status-pill ${row.is_active ? "pill-active" : "pill-draft"}`}>
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />
-          {row.is_active ? "Activo" : "Inactivo"}
-        </span>
-      )},
-    { key: "actions", header: "", className: "w-20 text-right",
-      cell: (row) => (
-        <div className="flex justify-end gap-1">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(row)}>
-            <Pencil size={14} />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(row)}>
-            <Trash2 size={14} />
-          </Button>
-        </div>
-      )},
-  ]
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return staff
+    return staff.filter((s) => s.name.toLowerCase().includes(q) || s.position.toLowerCase().includes(q))
+  }, [staff, query])
 
   return (
     <>
-      <DataTable
-        data={staff}
-        columns={columns}
-        searchPlaceholder="Buscar colaborador..."
-        searchKeys={["name", "position"] as (keyof StaffMember)[]}
-        actions={
-          <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
-            <Plus size={16} className="mr-1" /> Nuevo colaborador
-          </Button>
-        }
-        emptyState={
-          <EmptyState icon={Users} title="Sin personal"
-            description="Agrega los colaboradores que participan en tus eventos."
-            action={{ label: "Agregar colaborador", onClick: openCreate }} />
-        }
-      />
+      <div className="flex items-center gap-3 flex-wrap justify-between">
+        <div className="relative w-full sm:w-72">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar colaborador o puesto…" className="pl-9 h-9 font-sans" />
+        </div>
+        <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
+          <Plus size={16} className="mr-1" /> Nuevo colaborador
+        </Button>
+      </div>
+
+      {staff.length === 0 ? (
+        <EmptyState icon={Users} title="Sin personal"
+          description="Agrega los colaboradores que participan en tus eventos."
+          action={{ label: "Agregar colaborador", onClick: openCreate }} />
+      ) : filtered.length === 0 ? (
+        <div className="enterprise-card py-12 text-center">
+          <p className="text-sm font-sans text-muted-foreground">Ningún colaborador coincide con “{query}”.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 stagger-children">
+          {filtered.map((s) => (
+            <div key={s.id} className="enterprise-card p-4 flex items-center gap-3 group" style={{ opacity: s.is_active ? 1 : 0.6 }}>
+              <div className="shrink-0 grid place-items-center rounded-full mono-data" style={{ height: "2.75rem", width: "2.75rem", background: `color-mix(in srgb, ${ACCENT} 12%, white)`, color: ACCENT, fontSize: "0.85rem", fontWeight: 700 }}>
+                {initials(s.name)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "0.98rem", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.2 }} className="truncate">{s.name}</p>
+                  {!s.is_active && <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.5rem", letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-3)" }}>inactivo</span>}
+                </div>
+                <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.72rem", fontWeight: 600, color: ACCENT }} className="truncate">{s.position}</p>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="mono-data" style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-1)" }}>
+                    {formatCurrency(s.rate)}<span style={{ color: "var(--text-3)", fontWeight: 400 }}>{RATE_SHORT[s.rate_type] ?? ""}</span>
+                  </span>
+                  {s.phone && (
+                    <a href={`tel:${s.phone.replace(/\s/g, "")}`} className="flex items-center gap-1 text-xs font-sans hover:text-gold-dark transition-colors" style={{ color: "var(--text-3)" }} onClick={(e) => e.stopPropagation()}>
+                      <Phone size={11} /> {s.phone}
+                    </a>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(s)}><Pencil size={14} /></Button>
+                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(s)}><Trash2 size={14} /></Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Create / Edit */}
       <Dialog open={open} onOpenChange={setOpen}>
