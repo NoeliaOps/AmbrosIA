@@ -22,8 +22,9 @@ type SidebarProps = {
 }
 
 const CORE_NAV_KEYS: ModuleKey[] = [
-  "dashboard", "calendar", "events", "quotes", "contracts", "payments",
-  "requisitions", "purchase_orders", "actual_purchases", "profit", "staff",
+  "dashboard", "calendar", "events", "quotes", "contracts", "templates", "payments",
+  "requisitions", "purchase_orders", "actual_purchases", "inventory", "profit", "staff",
+  "postmortem",
 ]
 const PERSONA_ORDER: DemoPersona[] = ["admin", "coordinadora", "chef"]
 
