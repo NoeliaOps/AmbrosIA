@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { createClient } from "@/lib/supabase/server"
 import { QuotePDF } from "@/components/pdf/quote-pdf"
+import { loadOrgLogo } from "@/lib/pdf-fonts"
 import React from "react"
-import path from "path"
 
 export async function GET(
   _request: Request,
@@ -31,10 +31,9 @@ export async function GET(
   const items = [...(quote.quote_line_items ?? [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
   const { data: org } = await supabase.from("organizations").select("name").single()
-  const logoPath = path.join(process.cwd(), "public/brand/logo-artesano-dark.jpg")
 
   const data = {
-    logoPath,
+    logo: loadOrgLogo(),
     orgName: org?.name,
     quoteNumber: `${String(quote.version_number ?? 1).padStart(3, "0")}`,
     createdAt: quote.created_at,

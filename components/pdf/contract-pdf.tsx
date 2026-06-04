@@ -1,20 +1,8 @@
 import React from "react"
-import { Document, Page, View, Text, StyleSheet, Font, Image as PdfImage } from "@react-pdf/renderer"
+import { Document, Page, View, Text, StyleSheet, Image as PdfImage } from "@react-pdf/renderer"
+import { registerPdfFonts } from "@/lib/pdf-fonts"
 
-Font.register({
-  family: "Playfair",
-  fonts: [
-    { src: "https://fonts.gstatic.com/s/playfairdisplay/v37/nuFiD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKd3vXDXbtXN.ttf", fontWeight: 400 },
-    { src: "https://fonts.gstatic.com/s/playfairdisplay/v37/nuFiD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKd3vXDXbtM.ttf", fontWeight: 700 },
-  ],
-})
-Font.register({
-  family: "Inter",
-  fonts: [
-    { src: "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff2", fontWeight: 400 },
-    { src: "https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hiJ-Ek-_EeA.woff2", fontWeight: 600 },
-  ],
-})
+registerPdfFonts()
 
 const GOLD = "#D4952B"
 const INK = "#0F0F0F"
@@ -76,7 +64,7 @@ function fmtDate(iso: string) {
 export type ContractClause = { id: string; title: string; content: string }
 
 export type ContractPDFData = {
-  logoPath?: string
+  logo?: Buffer
   orgName?: string
   contractNumber: string
   createdAt: string
@@ -105,8 +93,8 @@ export function ContractPDF({ data }: { data: ContractPDFData }) {
         {/* Header band */}
         <View style={s.headerBand}>
           <View>
-            {data.logoPath
-              ? <PdfImage src={data.logoPath} style={{ height: 28, width: "auto", objectFit: "contain" }} />
+            {data.logo
+              ? <PdfImage src={data.logo} style={{ height: 28, width: "auto", objectFit: "contain" }} />
               : <Text style={s.headerLogo}>{orgName}</Text>
             }
           </View>

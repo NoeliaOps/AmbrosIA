@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { createClient } from "@/lib/supabase/server"
 import { ContractPDF, type ContractClause } from "@/components/pdf/contract-pdf"
+import { loadOrgLogo } from "@/lib/pdf-fonts"
 import React from "react"
-import path from "path"
 
 export async function GET(
   _request: Request,
@@ -31,10 +31,9 @@ export async function GET(
   const quote = contract.quotes as { total: number } | null
 
   const { data: org } = await supabase.from("organizations").select("name").single()
-  const logoPath = path.join(process.cwd(), "public/brand/logo-artesano-dark.jpg")
 
   const data = {
-    logoPath,
+    logo: loadOrgLogo(),
     orgName: org?.name,
     contractNumber: id.slice(-6).toUpperCase(),
     createdAt: contract.created_at,
