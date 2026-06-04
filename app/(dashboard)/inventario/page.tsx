@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { PageHeader } from "@/components/layout/page-header"
+import { ModuleComingSoon } from "@/components/layout/module-coming-soon"
 import { Warehouse } from "lucide-react"
 
 export const metadata: Metadata = { title: "Inventario" }
@@ -8,13 +9,17 @@ export default function InventarioPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Inventario" description="Control básico de almacén e insumos en stock." />
-      <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 text-center rounded-lg border border-dashed border-border p-16">
-        <Warehouse size={32} className="text-muted-foreground/30" />
-        <p className="font-heading font-semibold text-ink">Próximamente</p>
-        <p className="text-sm font-sans text-muted-foreground max-w-sm">
-          El módulo de inventario está en desarrollo.
-        </p>
-      </div>
+      <ModuleComingSoon
+        accent="#6B4A2F"
+        icon={Warehouse}
+        headline="Lleva el stock de tu almacén al día"
+        capabilities={[
+          "Existencias por insumo, con su unidad y costo actual",
+          "Alertas cuando un insumo baja de su mínimo",
+          "Descuento automático de existencias al registrar compras y eventos",
+        ]}
+        cta={{ label: "Ver ingredientes", href: "/catalogos/ingredientes" }}
+      />
     </div>
   )
 }

@@ -1,24 +1,25 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, BookOpen, X } from "lucide-react"
+import { Plus, Pencil, Trash2, BookOpen, X, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { DataTable, type Column } from "@/components/tables/data-table"
 import { EmptyState } from "@/components/ui/empty-state"
 import { formatCurrency } from "@/lib/utils"
 import { EVENT_TYPES } from "@/lib/constants"
 import { createMenu, updateMenu, deleteMenu, type MenuFormData } from "../actions"
+
+// Identidad del módulo Menús (Recetas → ciruela)
+const ACCENT = "#6B4C6B"
 
 type Dish = {
   id: string
@@ -63,6 +64,7 @@ type Props = { menus: Menu[]; dishes: Dish[] }
 
 export function MenuClient({ menus: initial, dishes }: Props) {
   const [menus, setMenus] = useState(initial)
+  const [query, setQuery] = useState("")
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Menu | null>(null)
   const [deleting, setDeleting] = useState<Menu | null>(null)
@@ -149,56 +151,39 @@ export function MenuClient({ menus: initial, dishes }: Props) {
     setLoading(false)
   }
 
-  const columns: Column<Menu>[] = [
-    { key: "name", header: "Menú", sortable: true,
-      cell: (row) => <span className="font-medium">{row.name}</span> },
-    { key: "event_type", header: "Tipo de evento",
-      cell: (row) => row.event_type
-        ? <Badge variant="secondary" className="font-sans text-xs">{row.event_type}</Badge>
-        : "—" },
-    { key: "menu_dishes", header: "Platillos",
-      cell: (row) => <span className="text-muted-foreground">{row.menu_dishes.length} platillo{row.menu_dishes.length !== 1 ? "s" : ""}</span> },
-    { key: "cost", header: "Costo estimado total",
-      cell: (row) => {
-        const cost = row.menu_dishes.reduce((s, md) => {
-          const dish = md.dishes
-          if (!dish) return s
-          const perServing = dish.recipe_items.reduce((acc, r) => acc + (r.ingredients?.current_price ?? 0) * r.quantity, 0) / (dish.servings_yield || 1)
-          return s + perServing * md.servings
-        }, 0)
-        return <span className="tabular-nums font-medium">{formatCurrency(cost)}</span>
-      }},
-    { key: "actions", header: "", className: "w-20 text-right",
-      cell: (row) => (
-        <div className="flex justify-end gap-1">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(row)}>
-            <Pencil size={14} />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(row)}>
-            <Trash2 size={14} />
-          </Button>
-        </div>
-      )},
-  ]
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return menus
+    return menus.filter((m) => m.name.toLowerCase().includes(q) || (m.event_type ?? "").toLowerCase().includes(q))
+  }, [menus, query])
 
   return (
     <>
-      <DataTable
-        data={menus}
-        columns={columns}
-        searchPlaceholder="Buscar menú..."
-        searchKeys={["name", "event_type"] as (keyof Menu)[]}
-        actions={
-          <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
-            <Plus size={16} className="mr-1" /> Nuevo menú
-          </Button>
-        }
-        emptyState={
-          <EmptyState icon={BookOpen} title="Sin menús"
-            description="Crea menús combinando platillos de tu catálogo."
-            action={{ label: "Crear menú", onClick: openCreate }} />
-        }
-      />
+      <div className="flex items-center gap-3 flex-wrap justify-between">
+        <div className="relative w-full sm:w-72">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar menú o tipo de evento…" className="pl-9 h-9 font-sans" />
+        </div>
+        <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
+          <Plus size={16} className="mr-1" /> Nuevo menú
+        </Button>
+      </div>
+
+      {menus.length === 0 ? (
+        <EmptyState icon={BookOpen} title="Sin menús"
+          description="Crea menús combinando platillos de tu catálogo."
+          action={{ label: "Crear menú", onClick: openCreate }} />
+      ) : filtered.length === 0 ? (
+        <div className="enterprise-card py-12 text-center">
+          <p className="text-sm font-sans text-muted-foreground">Ningún menú coincide con “{query}”.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 stagger-children">
+          {filtered.map((menu) => (
+            <MenuCard key={menu.id} menu={menu} onEdit={() => openEdit(menu)} onDelete={() => setDeleting(menu)} />
+          ))}
+        </div>
+      )}
 
       {/* Create / Edit */}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -317,5 +302,62 @@ export function MenuClient({ menus: initial, dishes }: Props) {
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+function MenuCard({ menu, onEdit, onDelete }: { menu: Menu; onEdit: () => void; onDelete: () => void }) {
+  const lines = menu.menu_dishes.map((md) => {
+    const dish = md.dishes
+    const perServing = dish
+      ? dish.recipe_items.reduce((acc, r) => acc + (r.ingredients?.current_price ?? 0) * r.quantity, 0) / (dish.servings_yield || 1)
+      : 0
+    return {
+      name: dish?.name ?? "—",
+      category: dish?.category ?? null,
+      servings: md.servings,
+      cost: perServing * md.servings,
+    }
+  })
+  const total = lines.reduce((s, l) => s + l.cost, 0)
+
+  return (
+    <div className="enterprise-card p-4 flex flex-col gap-3 group">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "1.1rem", fontWeight: 600, color: "var(--text-1)", letterSpacing: "-0.01em", lineHeight: 1.2 }} className="truncate">
+            {menu.name}
+          </h3>
+          <p className="mt-0.5 flex items-center gap-1.5 flex-wrap" style={{ fontFamily: "var(--font-sans)", fontSize: "0.72rem", color: "var(--text-3)" }}>
+            {menu.event_type && <span style={{ color: ACCENT, fontWeight: 600 }}>{menu.event_type}</span>}
+            {menu.event_type && <span>·</span>}
+            <span>{lines.length} platillo{lines.length !== 1 ? "s" : ""}</span>
+          </p>
+        </div>
+        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onEdit}><Pencil size={14} /></Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={onDelete}><Trash2 size={14} /></Button>
+        </div>
+      </div>
+
+      {lines.length > 0 ? (
+        <div className="space-y-1">
+          {lines.map((l, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm">
+              <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: ACCENT, opacity: 0.5 }} />
+              <span className="font-sans truncate flex-1" style={{ color: "var(--text-1)" }}>{l.name}</span>
+              <span className="mono-data shrink-0" style={{ fontSize: "0.7rem", color: "var(--text-3)" }}>×{l.servings}</span>
+              <span className="mono-data shrink-0 text-right" style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--text-1)", width: "4.5rem" }}>{formatCurrency(l.cost)}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs font-sans text-muted-foreground italic">Sin platillos — agrégalos para calcular el costo.</p>
+      )}
+
+      <div className="mt-auto pt-3 flex items-end justify-between" style={{ borderTop: "1px solid var(--border-def, #EBEBEC)" }}>
+        <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-3)" }}>Costo estimado total</p>
+        <p className="mono-data" style={{ fontSize: "1.25rem", fontWeight: 700, color: ACCENT, lineHeight: 1.1 }}>{formatCurrency(total)}</p>
+      </div>
+    </div>
   )
 }

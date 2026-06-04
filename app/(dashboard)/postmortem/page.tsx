@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { PageHeader } from "@/components/layout/page-header"
+import { ModuleComingSoon } from "@/components/layout/module-coming-soon"
 import { MessageSquare } from "lucide-react"
 
 export const metadata: Metadata = { title: "Post-mortem" }
@@ -8,13 +9,17 @@ export default function PostmortemPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Post-mortem" description="Notas y lecciones aprendidas por evento." />
-      <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 text-center rounded-lg border border-dashed border-border p-16">
-        <MessageSquare size={32} className="text-muted-foreground/30" />
-        <p className="font-heading font-semibold text-ink">Próximamente</p>
-        <p className="text-sm font-sans text-muted-foreground max-w-sm">
-          El registro de lecciones aprendidas está en desarrollo.
-        </p>
-      </div>
+      <ModuleComingSoon
+        accent="#3C3C3C"
+        icon={MessageSquare}
+        headline="Aprende de cada evento para mejorar el siguiente"
+        capabilities={[
+          "Registra qué salió bien y qué mejorar después de cada evento",
+          "Compara lo estimado contra lo real (costos, personal, tiempos)",
+          "Convierte las lecciones en notas accionables para próximos eventos",
+        ]}
+        cta={{ label: "Ver eventos", href: "/eventos" }}
+      />
     </div>
   )
 }

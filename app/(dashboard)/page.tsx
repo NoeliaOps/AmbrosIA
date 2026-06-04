@@ -6,16 +6,18 @@ import {
   AlertTriangle, Clock, ClipboardList, Users, ArrowRight,
   CheckCircle, BarChart3, Package,
 } from "lucide-react"
-import { formatCurrency, formatDate, formatShortDate } from "@/lib/utils"
+import { formatCurrency, formatShortDate } from "@/lib/utils"
+import { PageHeader } from "@/components/layout/page-header"
 
 export const metadata: Metadata = { title: "Dashboard" }
 
-const STATUS_CFG: Record<string, { label: string; dot: string; text: string }> = {
-  cotizado:       { label: "Cotizado",       dot: "bg-blue-400",    text: "text-blue-400" },
-  contratado:     { label: "Contratado",     dot: "bg-emerald-400", text: "text-emerald-400" },
-  en_requisicion: { label: "En requisición", dot: "bg-amber-400",   text: "text-amber-400" },
-  en_compras:     { label: "En compras",     dot: "bg-orange-400",  text: "text-orange-400" },
-  completado:     { label: "Completado",     dot: "bg-sage",        text: "text-sage" },
+// Colores de etapa unificados con el pipeline de Eventos y el Calendario.
+const STATUS_CFG: Record<string, { label: string; color: string }> = {
+  cotizado:       { label: "Cotizado",       color: "#3D5A80" },
+  contratado:     { label: "Contratado",     color: "#4C4F8A" },
+  en_requisicion: { label: "En requisición", color: "#2C6E6A" },
+  en_compras:     { label: "En compras",     color: "#9A5B3F" },
+  completado:     { label: "Completado",     color: "#2F6B4F" },
 }
 
 export default async function DashboardPage() {
@@ -102,18 +104,16 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8 pb-8">
       {/* Page header */}
-      <div className="section-header animate-fade-up">
-        <div>
-          <h1 style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "1.875rem", fontWeight: 700, color: "var(--text-1)", letterSpacing: "-0.025em", lineHeight: 1.2 }}>Dashboard</h1>
-          <p style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", fontSize: "0.775rem", color: "var(--text-2)", marginTop: "0.3rem", letterSpacing: "0.01em" }}>
-            Resumen ejecutivo · {new Date().toLocaleDateString("es-MX", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-          </p>
-        </div>
-        <Link href="/eventos" className="hidden sm:flex items-center gap-1.5 text-xs font-sans font-medium hover:text-amber transition-colors border border-border-def rounded px-3 py-1.5 bg-card hover:border-amber/30" style={{ color: "var(--text-2)" }}>
-          <CalendarDays size={13} />
-          Ver todos los eventos
-        </Link>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description={`Resumen ejecutivo · ${new Date().toLocaleDateString("es-MX", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}`}
+        actions={
+          <Link href="/eventos" className="hidden sm:flex items-center gap-1.5 text-xs font-sans font-medium transition-colors border border-border rounded px-3 py-1.5 bg-card hover:border-gold/40" style={{ color: "var(--text-2)" }}>
+            <CalendarDays size={13} />
+            Ver todos los eventos
+          </Link>
+        }
+      />
 
       {/* Alert banners */}
       <div className="space-y-3">
@@ -311,15 +311,15 @@ export default async function DashboardPage() {
                       <p style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "0.9375rem", fontWeight: 500, color: "var(--text-1)", letterSpacing: "0.01em", lineHeight: 1.3 }} className="truncate">{e.name}</p>
                       <p className="flex items-center gap-1.5 mt-0.5">
                         <span className="truncate" style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", fontSize: "0.7rem", color: "var(--text-2)" }}>{(e.clients as { name: string } | null)?.name ?? "Sin cliente"}</span>
-                        <span style={{ color: "var(--border-dim)" }}>·</span>
+                        <span style={{ color: "var(--text-3)" }}>·</span>
                         <Users size={10} className="shrink-0" style={{ color: "var(--text-3)" }} />
                         <span className="mono-data" style={{ fontSize: "0.7rem", color: "var(--text-2)" }}>{e.guest_count}</span>
                       </p>
                     </div>
                     {cfg && (
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <div className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-                        <span style={{ fontFamily: "var(--font-mono), ui-monospace, monospace", fontSize: "0.65rem", letterSpacing: "0.08em", textTransform: "uppercase" }} className={cfg.text}>{cfg.label}</span>
+                        <div className="h-1.5 w-1.5 rounded-full" style={{ background: cfg.color }} />
+                        <span style={{ fontFamily: "var(--font-mono), ui-monospace, monospace", fontSize: "0.65rem", letterSpacing: "0.08em", textTransform: "uppercase", color: cfg.color }}>{cfg.label}</span>
                       </div>
                     )}
                   </Link>
@@ -361,7 +361,7 @@ export default async function DashboardPage() {
                           {(e.clients as { name: string } | null)?.name ?? "—"}
                         </p>
                       </div>
-                      {cfg && <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${cfg.dot}`} />}
+                      {cfg && <div className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: cfg.color }} />}
                     </Link>
                   )
                 })}
@@ -404,16 +404,17 @@ function KpiTile({
   accent: "gold" | "emerald" | "red" | "blue"
 }) {
   const config = {
-    gold:    { border: "var(--amber)",        icon: "var(--amber)",        iconBg: "rgb(212 149 43 / 0.12)"  },
-    emerald: { border: "var(--status-active)", icon: "var(--status-active)", iconBg: "rgb(82 182 138 / 0.10)"  },
-    red:     { border: "var(--ember)",        icon: "var(--ember)",        iconBg: "rgb(192 88 69 / 0.12)"   },
-    blue:    { border: "var(--status-info)",   icon: "var(--status-info)",   iconBg: "rgb(107 155 189 / 0.10)" },
+    gold:    { c: "#8B6D24" },
+    emerald: { c: "#2F6B4F" },
+    red:     { c: "#991B1B" },
+    blue:    { c: "#3D5A80" },
   }[accent]
+  const tile = { border: config.c, icon: config.c, iconBg: `color-mix(in srgb, ${config.c} 12%, white)` }
 
   const isMonetaryOrPercent = value.startsWith("$") || value.endsWith("%")
 
   return (
-    <div className="kpi-tile" style={{ borderLeftColor: config.border }}>
+    <div className="kpi-tile" style={{ borderLeftColor: tile.border }}>
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1.5 min-w-0 flex-1">
           <p style={{
@@ -439,8 +440,8 @@ function KpiTile({
             lineHeight: 1.4,
           }}>{sub}</p>
         </div>
-        <div className="shrink-0 rounded p-1.5" style={{ background: config.iconBg }}>
-          <Icon size={14} style={{ color: config.icon }} />
+        <div className="shrink-0 rounded p-1.5" style={{ background: tile.iconBg }}>
+          <Icon size={14} style={{ color: tile.icon }} />
         </div>
       </div>
     </div>
