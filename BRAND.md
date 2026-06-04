@@ -1,6 +1,6 @@
 # AmbrosIA — Guía de Uso de Marca
 
-> Versión 3.0 · Junio 2026  
+> Versión 4.0 · Junio 2026 — Paleta "Pizarra & Champagne"  
 > Para equipo de producto, diseño y desarrollo
 
 ---
@@ -9,58 +9,65 @@
 
 **AmbrosIA es la herramienta de quienes convierten una fecha en un recuerdo.**
 
-El diseño debe transmitir tres valores simultáneamente:
+La identidad visual es **"Pizarra & Champagne"** — sobria, premium, como el menú de un restaurante Michelin. Sin color dominante saturado; el contenido vive en blanco limpio, el sidebar en pizarra oscura, y el dorado champagne aparece solo en líneas finas y acentos decorativos.
 
 | Valor | Expresión visual |
 |-------|-----------------|
-| **Elegancia operativa** | Tipografía serif editorialista, espaciado generoso, sin ruido visual |
-| **Calidez artesanal** | Paleta crema-ámbar, textura sutil, no frío ni corporativo |
-| **Claridad de datos** | Monoespaciado para números, jerarquía tipográfica estricta |
+| **Elegancia operativa** | Encabezados serif (Playfair Display), espaciado generoso, blanco limpio |
+| **Sobriedad premium** | CTAs en carbón oscuro, champagne solo como detalle, nada estridente |
+| **Claridad de datos** | Monoespaciado (DM Mono) para números, jerarquía tipográfica estricta |
 
-**Lo que NO somos:** Una herramienta de tech genérica. No usamos azules corporativos, blancos fríos, ni fondos negros tipo developer.
+**Lo que NO somos:** Una herramienta tech genérica. No usamos azules corporativos, fondos negros tipo developer, ni naranjas/ámbar saturados como color de relleno.
 
 ---
 
 ## 2. Paleta de Colores
 
-### 2.1 Superficies de Contenido (tema claro)
+### 2.1 Superficies de Contenido
 
 | Token CSS | Valor HEX | Uso |
 |-----------|-----------|-----|
-| `--background` | `#F7F4EF` | Fondo de página — crema cálida |
-| `--surface-1` / `--card` | `#FFFFFF` | Tarjetas, dialogs, modales |
-| `--surface-2` | `#F0EDE5` | Inputs, dropdowns, hover states |
-| `--surface-3` | `#E8E2D8` | Estados activos sutiles |
+| `--background` / `--surface-1` / `--card` | `#FFFFFF` | Fondo de página, tarjetas, modales |
+| `--surface-2` | `#F4F4F5` | Inputs, dropdowns — gris muy suave |
+| `--surface-3` | `#EBEBEC` | Hover states |
 
 ### 2.2 Texto
 
 | Token CSS | Valor HEX | Contraste | Uso |
 |-----------|-----------|-----------|-----|
-| `--text-1` | `#1C1612` | 14.5:1 sobre blanco | Texto principal, headings |
-| `--text-2` | `#6B5E54` | 5.8:1 sobre blanco | Texto secundario, subtítulos |
-| `--text-3` | `#9C8E82` | 3.2:1 sobre blanco | Texto muted, placeholders |
+| `--text-1` | `#1A1A1A` | 17:1 sobre blanco | Texto principal, headings |
+| `--text-2` | `#4B5563` | 8.2:1 sobre blanco | Texto secundario, subtítulos |
+| `--text-3` | `#9CA3AF` | 2.9:1 sobre blanco | Solo placeholders / muted decorativo |
 
-### 2.3 Acento — Ámbar Profundo
+### 2.3 CTA — Carbón Oscuro (color de acción primario)
 
 | Token CSS | Valor HEX | Contraste | Uso |
 |-----------|-----------|-----------|-----|
-| `--amber` | `#B45309` | 4.66:1 ✓ WCAG AA | CTAs, links, estados activos |
-| `--amber-dim` | `#7C3A08` | 7.1:1 ✓ WCAG AAA | Hover, versión oscura |
-| `--amber-bg` | `#FEF3C7` | — | Fondos tint, highlights suaves |
-| `--amber-glow` | `rgb(180 83 9 / 0.08)` | — | Hover de filas, focus glow |
+| `--cta` / `--primary` | `#2D2926` | 13.8:1 ✓ AAA | **Botones primarios**, filtros activos, anillo de focus |
+| `--cta-hover` | `#1A1714` | — | Hover de botones primarios |
 
-> **Regla de contraste:** El ámbar `#B45309` pasa WCAG AA (4.5:1) sobre blanco y crema. Siempre verificar antes de usar sobre colores de superficie.
+> En clases inline, los botones primarios usan `bg-[#2D2926] hover:bg-[#1A1714] text-white`.
 
-### 2.4 Sidebar (oscuro cálido)
+### 2.4 Acento — Champagne Dorado (SOLO decorativo)
 
-El sidebar usa su propio sistema de tokens que permanece oscuro independientemente del tema de contenido.
+| Token CSS | Valor HEX | Contraste | Uso |
+|-----------|-----------|-----------|-----|
+| `--amber` (`bg-gold`) | `#C4963B` | 2.58:1 ❌ | **Solo decorativo:** líneas, bordes, glows, íconos sobre fondo oscuro |
+| `--amber-dim` (`text-gold-dark`) | `#8B6D24` | 4.54:1 ✓ AA | Texto/íconos dorados sobre fondo claro |
+| `--amber-bg` | `#FBF6E9` | — | Fondos tint champagne |
+
+> **Regla crítica:** `#C4963B` (champagne) **falla contraste sobre blanco** (2.58:1). Nunca usarlo como color de texto/ícono sobre fondos claros — usar `--amber-dim` `#8B6D24` en su lugar. El champagne es válido sobre el sidebar oscuro y como detalle decorativo (líneas, glows).
+
+### 2.5 Sidebar (pizarra oscuro)
+
+El sidebar usa su propio sistema de tokens que permanece oscuro independientemente del contenido.
 
 | Token CSS | Valor HEX | Uso |
 |-----------|-----------|-----|
-| `--sidebar` | `#1C1612` | Fondo del sidebar |
-| `--sidebar-foreground` | `#E8E0D4` | Texto en sidebar |
-| `--sidebar-accent` | `#2D2520` | Hover items nav |
-| `--sidebar-primary` | `#B45309` | Item activo (ámbar) |
+| `--sidebar` | `#2A2D35` | Fondo del sidebar — gris pizarra azulado |
+| `--sidebar-foreground` | `#E8EAF0` | Texto en sidebar |
+| `--sidebar-accent` | `#363A46` | Hover items nav |
+| `--sidebar-primary` | `#C4963B` | Item activo (champagne, legible sobre pizarra) |
 
 ### 2.5 Colores Semánticos
 
@@ -196,9 +203,10 @@ Usar siempre las clases semánticas, nunca colores ad-hoc:
 "La invitación — el primer momento que define la experiencia"
 
 ### Layout
-- **Panel izquierdo (52%–54%):** Oscuro cálido `#1C1612`, brand story, wordmark grande, tagline en cursiva
-- **Panel derecho (46%–48%):** Crema muy suave `#FAF8F5`, formulario sin card
+- **Panel izquierdo (54%):** Pizarra oscuro `#2A2D35`, brand story, wordmark, tagline en cursiva, glows champagne, features 2×2. Usa `width: 54%` + `flexShrink: 0` (nunca se encoge).
+- **Panel derecho (flex-1):** Blanco `#FFFFFF`, formulario sin card. Usa `flex: 1` + `minHeight: 100dvh` (llena todo el alto — evita el "corte").
 - **El formulario NO tiene borde ni sombra de card** — respira directamente sobre la superficie
+- **CTA "Entrar":** carbón `#2D2926`, hover `#1A1714`, texto blanco
 
 ### Tagline oficial del login
 > "Para quienes convierten una fecha en un recuerdo."
@@ -209,7 +217,7 @@ Usar siempre las clases semánticas, nunca colores ad-hoc:
 
 - Usar **Lucide React** exclusivamente — stroke width consistente de 1.5–2px
 - Tamaño base: `size={14}` en nav, `size={16}` en botones, `size={20}` en cards
-- Color: siempre heredar de `color: "var(--text-2)"` o `color: "var(--amber)"` para acento
+- Color sobre fondo claro: `var(--text-2)` neutro, o `var(--amber-dim)` `#8B6D24` para acento dorado. Nunca `var(--amber)` (champagne) como ícono sobre blanco.
 - **Nunca emojis como íconos funcionales**
 
 ---
@@ -247,13 +255,14 @@ Usar siempre las clases semánticas, nunca colores ad-hoc:
 
 | ❌ Prohibido | ✅ Alternativa |
 |-------------|---------------|
-| Fondos azul-pizarra o grises fríos | Superficies crema o blancas cálidas |
-| Texto ámbar luminoso sobre negro | Ámbar `#B45309` oscuro sobre crema/blanco |
+| Champagne `#C4963B` como texto sobre fondo claro | `#8B6D24` (`text-gold-dark`) para texto/íconos dorados |
+| Botones primarios en champagne/dorado | Carbón `#2D2926` con texto blanco |
+| Ámbar/naranja saturado como color de relleno | Champagne solo en líneas finas, glows, bordes |
 | Tres fuentes mezcladas en un mismo bloque | Una fuente por contexto, regla estricta |
 | Status pills con colores inline | Siempre `.pill-*` semánticos |
 | Form flotando en card con borde en el login | Form directo sobre superficie sin card |
 | Emojis como íconos | Lucide React exclusivamente |
-| Colores hardcodeados en componentes | CSS variables desde `:root` |
+| Colores hardcodeados arbitrarios | CSS variables desde `:root` (excepción: CTA `bg-[#2D2926]`) |
 | Playfair Display < 18px | Karla para tamaños pequeños |
 
 ---

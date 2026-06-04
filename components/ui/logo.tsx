@@ -31,7 +31,7 @@ export function LogoWordmark({ className, size = "md", variant = "dark" }: LogoW
         fontFamily: "var(--font-display), 'Playfair Display', Georgia, serif",
         fontSize: s.mark,
         fontWeight: 700,
-        color: "#B45309",
+        color: "#C4963B",
         letterSpacing: "-0.025em",
         lineHeight: 1,
       }}>A</span>
@@ -47,7 +47,7 @@ export function LogoWordmark({ className, size = "md", variant = "dark" }: LogoW
         fontFamily: "var(--font-display), 'Playfair Display', Georgia, serif",
         fontSize: s.text,
         fontWeight: 700,
-        color: "#B45309",
+        color: "#C4963B",
         letterSpacing: "0.04em",
         lineHeight: 1,
       }}>IA</span>

@@ -600,7 +600,7 @@ export function ComprasTab({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPurchaseOpen(false)} className="font-sans">Cancelar</Button>
-            <Button onClick={savePurchase} disabled={savingPurchase} className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium">
+            <Button onClick={savePurchase} disabled={savingPurchase} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
               {savingPurchase ? "Guardando…" : "Guardar"}
             </Button>
           </DialogFooter>
@@ -663,7 +663,7 @@ export function ComprasTab({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIndirectOpen(false)} className="font-sans">Cancelar</Button>
-            <Button onClick={saveIndirect} disabled={savingIndirect} className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium">
+            <Button onClick={saveIndirect} disabled={savingIndirect} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
               {savingIndirect ? "Guardando…" : "Guardar"}
             </Button>
           </DialogFooter>

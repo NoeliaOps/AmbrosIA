@@ -161,7 +161,7 @@ export function IndirectCostClient({ costs: initial }: Props) {
         searchPlaceholder="Buscar concepto..."
         searchKeys={["name"] as (keyof IndirectCost)[]}
         actions={
-          <Button onClick={openCreate} className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium">
+          <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
             <Plus size={16} className="mr-1" /> Nuevo costo
           </Button>
         }
@@ -225,7 +225,7 @@ export function IndirectCostClient({ costs: initial }: Props) {
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)} className="font-sans">Cancelar</Button>
-              <Button type="submit" disabled={loading} className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium">
+              <Button type="submit" disabled={loading} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
                 {loading ? "Guardando…" : editing ? "Guardar cambios" : "Crear costo"}
               </Button>
             </DialogFooter>

@@ -49,17 +49,17 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 
   /* ── Brand aliases ─────────────────────────────── */
-  --color-amber:        #B45309;
-  --color-amber-dim:    #7C3A08;
+  --color-amber:        #C4963B;
+  --color-amber-dim:    #8B6D24;
   --color-sage:         #166534;
   --color-ember:        #991B1B;
   --color-jade:         #065F46;
-  --color-ink:          #1C1612;
-  --color-gold:         #B45309;
-  --color-gold-dark:    #7C3A08;
-  --color-cream:        #F7F4EF;
-  --color-charcoal:     #3C3528;
-  --color-silver:       #E0D8CC;
+  --color-ink:          #1A1A1A;
+  --color-gold:         #C4963B;
+  --color-gold-dark:    #8B6D24;
+  --color-cream:        #FFFFFF;
+  --color-charcoal:     #2D2926;
+  --color-silver:       #E5E7EB;
   --color-terracotta:   #C05845;
 }
 
@@ -70,39 +70,44 @@
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
   /* ══════════════════════════════════════════════════════
-     PALETA — Cálida Clara ("Cocina de Autor")
-     Base crema cálida para contenido, sidebar oscuro cálido.
-     Tipografía: Playfair Display / Karla / DM Mono.
+     PALETA — "Pizarra & Champagne"
+     Blanco puro para contenido, sidebar gris-pizarra oscuro.
+     CTAs: carbón oscuro. Acento: champagne-dorado decorativo.
      ══════════════════════════════════════════════════════ */
 
-  /* Superficies de contenido — claras y cálidas */
-  --background:  #F7F4EF;   /* crema principal — fondo de página */
-  --surface-0:   #F7F4EF;   /* alias */
-  --surface-1:   #FFFFFF;   /* blanco puro — tarjetas */
-  --surface-2:   #F0EDE5;   /* crema ligeramente más oscura — inputs, dropdowns */
-  --surface-3:   #E8E2D8;   /* crema hover — estados activos sutiles */
+  /* Superficies de contenido — limpias y neutrales */
+  --background:  #FFFFFF;   /* blanco puro */
+  --surface-0:   #FFFFFF;
+  --surface-1:   #FFFFFF;   /* tarjetas sobre fondo blanco = sin sombra pesada */
+  --surface-2:   #F4F4F5;   /* inputs, dropdowns — gris muy suave */
+  --surface-3:   #EBEBEC;   /* hover states */
 
-  /* Bordes cálidos */
-  --border-dim:  #EDE8DF;   /* separador muy sutil */
-  --border-def:  #E0D8CC;   /* borde estándar */
-  --border-str:  #C8BBAF;   /* borde fuerte */
+  /* Bordes neutros limpios */
+  --border-dim:  #F4F4F5;
+  --border-def:  #E5E7EB;
+  --border-str:  #D1D5DB;
 
-  /* Texto — sobre fondos claros */
-  --text-1:  #1C1612;   /* principal — marrón casi negro */
-  --text-2:  #6B5E54;   /* secundario — marrón grisáceo cálido */
-  --text-3:  #9C8E82;   /* terciario — gris cálido suave */
+  /* Texto — negro suave sobre blanco */
+  --text-1:  #1A1A1A;   /* principal — casi negro */
+  --text-2:  #4B5563;   /* secundario — gris oscuro */
+  --text-3:  #9CA3AF;   /* terciario — gris medio */
 
-  /* ── Acento — Ámbar Profundo (WCAG AA: 4.66:1 sobre blanco) ── */
-  --amber:       #B45309;   /* ámbar oscuro, texto interactivo */
-  --amber-dim:   #7C3A08;   /* hover más oscuro */
-  --amber-glow:  rgb(180 83 9 / 0.08);  /* highlight muy sutil */
-  --amber-bg:    #FEF3C7;   /* fondo tint ámbar */
+  /* ── Acento — Champagne Dorado (SOLO decorativo, no texto) ── */
+  /* #C4963B falla WCAG en blanco (2.58:1) — usar solo como línea/ícono */
+  --amber:       #C4963B;   /* champagne-dorado, SOLO decorativo */
+  --amber-dim:   #8B6D24;   /* versión oscura apta para texto (4.54:1 ✓) */
+  --amber-glow:  rgb(196 150 59 / 0.08);
+  --amber-bg:    #FBF6E9;   /* fondo tint champagne */
 
-  /* ── Semánticos ────────────────────────────────── */
-  --status-active:  #166534;  /* verde bosque oscuro — contratado, pagado */
-  --status-info:    #1E40AF;  /* azul marino — cotizado, enviado */
-  --status-danger:  #991B1B;  /* rojo oscuro — vencido, cancelado */
-  --status-done:    #374151;  /* gris oscuro — completado */
+  /* ── CTA — Carbón oscuro (reemplaza el ámbar como color primario de acción) ── */
+  --cta:         #2D2926;   /* carbón cálido oscuro — botones principales */
+  --cta-hover:   #1A1714;   /* hover más oscuro */
+
+  /* ── Semánticos — calibrados para fondo blanco ── */
+  --status-active:  #166534;  /* verde bosque */
+  --status-info:    #1E40AF;  /* azul marino */
+  --status-danger:  #991B1B;  /* rojo oscuro */
+  --status-done:    #374151;  /* gris oscuro */
 
   --sage:  #166534;
   --ember: #991B1B;
@@ -114,18 +119,18 @@
   --card-foreground:      var(--text-1);
   --popover:              var(--surface-1);
   --popover-foreground:   var(--text-1);
-  --primary:              var(--amber);
+  --primary:              var(--cta);          /* carbón para CTAs */
   --primary-foreground:   #FFFFFF;
   --secondary:            var(--surface-2);
   --secondary-foreground: var(--text-2);
   --muted:                var(--surface-2);
   --muted-foreground:     var(--text-2);
   --accent:               var(--amber-bg);
-  --accent-foreground:    var(--amber);
+  --accent-foreground:    var(--amber-dim);
   --destructive:          var(--ember);
   --border:               var(--border-def);
   --input:                var(--surface-2);
-  --ring:                 var(--amber);
+  --ring:                 var(--cta);
   --chart-1:              var(--amber);
   --chart-2:              var(--status-active);
   --chart-3:              #C05845;
@@ -133,15 +138,15 @@
   --chart-5:              var(--text-2);
   --radius:               0.4rem;
 
-  /* ── Sidebar — oscuro cálido (contrasta con área de contenido clara) */
-  --void:                       #1C1612;   /* marrón casi negro */
-  --sidebar:                    #1C1612;
-  --sidebar-foreground:         #E8E0D4;
-  --sidebar-primary:            var(--amber);
+  /* ── Sidebar — pizarra oscuro (gris azulado, contrasta con blanco del contenido) */
+  --void:                       #2A2D35;
+  --sidebar:                    #2A2D35;
+  --sidebar-foreground:         #E8EAF0;
+  --sidebar-primary:            var(--amber);          /* champagne para activos en sidebar oscuro */
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent:             #2D2520;
-  --sidebar-accent-foreground:  #E8E0D4;
-  --sidebar-border:             #2D2520;
+  --sidebar-accent:             #363A46;
+  --sidebar-accent-foreground:  #E8EAF0;
+  --sidebar-border:             #363A46;
   --sidebar-ring:               var(--amber);
 
   /* ── Compatibilidad hacia atrás ──────────────── */
@@ -244,17 +249,13 @@
     background-color: var(--surface-1);
     border: 1px solid var(--border-def);
     border-radius: var(--radius);
-    box-shadow:
-      0 1px 3px rgb(28 22 18 / 0.06),
-      0 1px 2px rgb(28 22 18 / 0.04);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
     transition: box-shadow 200ms var(--ease-out), border-color 200ms var(--ease-out);
   }
   @media (hover: hover) and (pointer: fine) {
     .enterprise-card:hover {
       border-color: var(--border-str);
-      box-shadow:
-        0 4px 12px rgb(28 22 18 / 0.08),
-        0 2px 4px rgb(28 22 18 / 0.05);
+      box-shadow: 0 4px 12px rgb(0 0 0 / 0.07);
     }
   }
 

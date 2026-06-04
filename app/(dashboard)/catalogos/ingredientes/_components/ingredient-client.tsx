@@ -279,7 +279,7 @@ export function IngredientClient({ ingredients: initial, suppliers }: Props) {
         searchPlaceholder="Buscar ingrediente o categoría..."
         searchKeys={["name", "category"] as (keyof Ingredient)[]}
         actions={
-          <Button onClick={openCreate} className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium">
+          <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
             <Plus size={16} className="mr-1" /> Nuevo ingrediente
           </Button>
         }
@@ -358,7 +358,7 @@ export function IngredientClient({ ingredients: initial, suppliers }: Props) {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)} className="font-sans">Cancelar</Button>
-              <Button type="submit" disabled={loading} className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium">
+              <Button type="submit" disabled={loading} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
                 {loading ? "Guardando…" : editing ? "Guardar cambios" : "Crear ingrediente"}
               </Button>
             </DialogFooter>

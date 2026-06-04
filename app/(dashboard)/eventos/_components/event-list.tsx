@@ -153,7 +153,7 @@ export function EventList({ events: initial, clients: initialClients, page = 1, 
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={openCreate} className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium">
+        <Button onClick={openCreate} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
           <Plus size={16} className="mr-1" /> Nuevo evento
         </Button>
       </div>
@@ -213,7 +213,7 @@ export function EventList({ events: initial, clients: initialClients, page = 1, 
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     title="Agregar a Google Calendar"
-                    className="text-muted-foreground/50 hover:text-gold transition-colors p-0.5 rounded"
+                    className="text-muted-foreground/50 hover:text-gold-dark transition-colors p-0.5 rounded"
                   >
                     <Calendar size={13} />
                   </a>
@@ -339,7 +339,7 @@ export function EventList({ events: initial, clients: initialClients, page = 1, 
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)} className="font-sans">Cancelar</Button>
-              <Button type="submit" disabled={loading} className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium">
+              <Button type="submit" disabled={loading} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
                 {loading ? "Creando…" : "Crear evento"}
               </Button>
             </DialogFooter>

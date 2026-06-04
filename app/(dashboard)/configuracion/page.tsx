@@ -34,7 +34,7 @@ export default function ConfiguracionPage() {
                 key={key}
                 className="flex items-center gap-3 rounded-md border border-border bg-muted/30 p-3"
               >
-                <module.icon className="h-4 w-4 text-gold shrink-0" />
+                <module.icon className="h-4 w-4 text-gold-dark shrink-0" />
                 <div>
                   <p className="text-sm font-medium font-sans">{module.label}</p>
                   <p className="text-xs text-muted-foreground font-sans">{module.description}</p>

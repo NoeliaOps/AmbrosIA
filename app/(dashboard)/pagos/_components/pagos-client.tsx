@@ -88,8 +88,8 @@ export function PagosClient({ payments: initial }: Props) {
             onClick={() => setActiveFilter(key)}
             className={`px-3 py-1.5 rounded-full text-xs font-sans font-medium border transition-colors ${
               activeFilter === key
-                ? "bg-gold text-ink border-gold"
-                : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-gold/40"
+                ? "bg-[#2D2926] text-white border-[#2D2926]"
+                : "bg-card border-border text-muted-foreground hover:text-foreground hover:border-[#C4963B]/40"
             }`}
           >
             {label} <span className="ml-1 opacity-60">{count}</span>
@@ -125,7 +125,7 @@ export function PagosClient({ payments: initial }: Props) {
                   <div className="flex items-center gap-1.5 min-w-0">
                     <p style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "0.9rem", fontWeight: 500, color: "var(--text-1)" }} className="truncate">{p.events?.name ?? "—"}</p>
                     {p.events && (
-                      <Link href={`/eventos/${p.events.id}`} className="text-muted-foreground hover:text-gold transition-colors shrink-0">
+                      <Link href={`/eventos/${p.events.id}`} className="text-muted-foreground hover:text-gold-dark transition-colors shrink-0">
                         <ExternalLink size={11} />
                       </Link>
                     )}
@@ -226,7 +226,7 @@ export function PagosClient({ payments: initial }: Props) {
             <Button
               onClick={confirmPay}
               disabled={loading}
-              className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium"
+              className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium"
             >
               {loading ? "Guardando…" : "Confirmar pago"}
             </Button>

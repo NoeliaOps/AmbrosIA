@@ -1000,7 +1000,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button onClick={saveQuote} disabled={savingQuote} className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium">
+            <Button onClick={saveQuote} disabled={savingQuote} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
               {savingQuote ? "Guardando…" : "Guardar cotización"}
             </Button>
           </div>
@@ -1024,7 +1024,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
               <Button
                 onClick={handleGenerateContract}
                 disabled={!quote || savingContract}
-                className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium"
+                className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium"
               >
                 {savingContract ? "Generando…" : "Generar contrato"}
               </Button>
@@ -1097,7 +1097,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
               </div>
 
               <div className="flex justify-end">
-                <Button onClick={saveContract} disabled={savingContract} className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium">
+                <Button onClick={saveContract} disabled={savingContract} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
                   {savingContract ? "Guardando…" : "Guardar contrato"}
                 </Button>
               </div>
@@ -1135,7 +1135,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
               <div className="rounded-md border border-dashed border-border p-10 text-center space-y-3">
                 <p className="font-heading font-semibold">Sin hitos de pago</p>
                 <p className="text-sm font-sans text-muted-foreground">Define el anticipo, pagos parciales y liquidación.</p>
-                <Button onClick={openNewMilestone} className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium">
+                <Button onClick={openNewMilestone} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
                   <Plus size={14} className="mr-1" /> Agregar hito
                 </Button>
               </div>
@@ -1190,7 +1190,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
                           rel="noopener noreferrer"
                           title="Agregar recordatorio a Google Calendar"
                         >
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-gold">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-gold-dark">
                             <Calendar size={12} />
                           </Button>
                         </a>
@@ -1235,7 +1235,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
                 <Button
                   onClick={handleGenerateRequisition}
                   disabled={generatingReq}
-                  className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium"
+                  className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium"
                 >
                   {generatingReq ? "Generando…" : "Generar requisición"}
                 </Button>
@@ -1280,7 +1280,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
                       size="sm"
                       onClick={handleGeneratePOs}
                       disabled={generatingPOs}
-                      className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium text-xs"
+                      className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium text-xs"
                     >
                       <ShoppingCart size={13} className="mr-1" />
                       {generatingPOs ? "Generando…" : "Generar órdenes de compra"}
@@ -1465,7 +1465,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayOpen(false)} className="font-sans">Cancelar</Button>
-            <Button onClick={saveMilestone} disabled={savingPayment} className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium">
+            <Button onClick={saveMilestone} disabled={savingPayment} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
               {savingPayment ? "Guardando…" : editingMilestone ? "Guardar" : "Crear"}
             </Button>
           </DialogFooter>
@@ -1571,7 +1571,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditOpen(false)} className="font-sans">Cancelar</Button>
-              <Button type="submit" disabled={loading} className="bg-gold hover:bg-gold-dark text-ink font-sans font-medium">
+              <Button type="submit" disabled={loading} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
                 {loading ? "Guardando…" : "Guardar cambios"}
               </Button>
             </DialogFooter>
