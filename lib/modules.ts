@@ -120,7 +120,7 @@ export const MODULE_REGISTRY: Record<ModuleKey, ModuleConfig> = {
     defaultEnabled: true,
   },
   staff: {
-    label: "Personal",
+    label: "Personal de eventos",
     description: "Asignación y control de personal por evento",
     path: "/personal-eventos",
     icon: Users,

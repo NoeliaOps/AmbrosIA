@@ -1,6 +1,6 @@
 import type { ModuleKey } from "@/lib/modules"
 
-export type DemoPersona = "admin" | "coordinadora" | "chef"
+export type DemoPersona = "ceo" | "gerente" | "ventas" | "compras" | "chef"
 
 export const DEMO_COOKIE = "artesano_demo_persona"
 
@@ -12,49 +12,81 @@ export type PersonaConfig = {
   color: string
   allowedModules: ModuleKey[]
   showCatalogs: boolean
-  catalogPaths?: string[]
+  catalogPaths?: string[]   // si se define, limita a estas rutas de catálogo
   showSettings: boolean
 }
 
+// Todos los módulos (para CEO/Gerente)
+const ALL_MODULES: ModuleKey[] = [
+  "dashboard", "calendar", "events", "quotes", "contracts", "templates", "payments",
+  "requisitions", "purchase_orders", "actual_purchases", "inventory", "profit", "staff",
+  "postmortem",
+]
+
 export const DEMO_PERSONAS: Record<DemoPersona, PersonaConfig> = {
-  admin: {
-    key: "admin",
+  // ── Dirección — visión total del negocio + configuración ──
+  ceo: {
+    key: "ceo",
     name: "Roberto García",
-    title: "Gerente General",
+    title: "Dirección General · CEO",
     initials: "RG",
     color: "bg-gold text-ink",
-    allowedModules: [
-      "dashboard", "calendar", "events", "quotes", "contracts", "templates", "payments",
-      "requisitions", "purchase_orders", "actual_purchases", "inventory", "profit", "staff",
-      "postmortem",
-    ],
+    allowedModules: ALL_MODULES,
     showCatalogs: true,
     showSettings: true,
   },
-  coordinadora: {
-    key: "coordinadora",
+  // ── Gerencia — coordina todo el ciclo operativo (sin configuración) ──
+  gerente: {
+    key: "gerente",
     name: "Carmen Ruiz",
-    title: "Coordinadora de Eventos",
+    title: "Gerente General",
     initials: "CR",
-    color: "bg-blue-500 text-white",
-    allowedModules: ["dashboard", "calendar", "events", "quotes", "contracts", "templates", "payments", "staff", "postmortem"],
-    showCatalogs: false,
+    color: "bg-[#3D5A80] text-white",
+    allowedModules: ALL_MODULES,
+    showCatalogs: true,
     showSettings: false,
   },
-  chef: {
-    key: "chef",
+  // ── Ventas — embudo comercial: cotizar, contratar, cobrar ──
+  ventas: {
+    key: "ventas",
+    name: "Sofía Méndez",
+    title: "Ventas",
+    initials: "SM",
+    color: "bg-[#4C4F8A] text-white",
+    allowedModules: ["dashboard", "calendar", "events", "quotes", "contracts", "payments", "templates", "postmortem"],
+    showCatalogs: true,
+    catalogPaths: ["/catalogos/platillos", "/catalogos/menus"],
+    showSettings: false,
+  },
+  // ── Compras — abasto: requisiciones, órdenes, compras, inventario ──
+  compras: {
+    key: "compras",
     name: "Miguel Torres",
-    title: "Chef / Jefe de Compras",
+    title: "Compras",
     initials: "MT",
-    color: "bg-orange-500 text-white",
+    color: "bg-[#9A5B3F] text-white",
     allowedModules: ["dashboard", "calendar", "events", "requisitions", "purchase_orders", "actual_purchases", "inventory"],
     showCatalogs: true,
-    catalogPaths: ["/catalogos/ingredientes", "/catalogos/platillos", "/catalogos/menus", "/catalogos/proveedores"],
+    catalogPaths: ["/catalogos/ingredientes", "/catalogos/proveedores"],
+    showSettings: false,
+  },
+  // ── Chef — producción: recetas, platillos, menús y lo que pide la cocina ──
+  chef: {
+    key: "chef",
+    name: "Lucía Fernández",
+    title: "Chef Ejecutiva",
+    initials: "LF",
+    color: "bg-[#2F6B4F] text-white",
+    allowedModules: ["dashboard", "calendar", "events", "requisitions"],
+    showCatalogs: true,
+    catalogPaths: ["/catalogos/ingredientes", "/catalogos/platillos", "/catalogos/menus"],
     showSettings: false,
   },
 }
 
+export const PERSONA_ORDER: DemoPersona[] = ["ceo", "gerente", "ventas", "compras", "chef"]
+
 export function getPersona(raw: string | undefined): DemoPersona {
-  if (raw === "coordinadora" || raw === "chef") return raw
-  return "admin"
+  if (raw === "ceo" || raw === "gerente" || raw === "ventas" || raw === "compras" || raw === "chef") return raw
+  return "ceo"
 }

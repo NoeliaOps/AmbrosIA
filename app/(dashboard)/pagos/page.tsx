@@ -1,7 +1,9 @@
 ﻿import type { Metadata } from "next"
+import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/layout/page-header"
 import { formatCurrency } from "@/lib/utils"
+import { DEMO_COOKIE, getPersona } from "@/lib/demo"
 import { CreditCard, CheckCircle, Clock, AlertTriangle } from "lucide-react"
 import { PagosClient, type PaymentRow } from "./_components/pagos-client"
 
@@ -10,12 +12,16 @@ export const metadata: Metadata = { title: "Pagos" }
 export default async function PagosPage() {
   const supabase = await createClient()
 
+  // Dirección/Gerencia entra directo al reporte ejecutivo; ventas a la cronología.
+  const persona = getPersona((await cookies()).get(DEMO_COOKIE)?.value)
+  const defaultView = persona === "ceo" || persona === "gerente" ? "reporte" : "cronologia"
+
   const today = new Date().toISOString().split("T")[0]
 
   const { data: rawPayments } = await supabase
     .from("payment_schedules")
     .select(`
-      id, description, amount, due_date, status, paid_at, paid_amount, reference,
+      id, description, amount, due_date, status, paid_at, paid_amount, discount_amount, reference,
       events(id, name, event_date, clients(name))
     `)
     .order("due_date", { ascending: true })
@@ -79,7 +85,7 @@ export default async function PagosPage() {
         </div>
       </div>
 
-      <PagosClient payments={payments} />
+      <PagosClient payments={payments} defaultView={defaultView} />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 "use server"
 
 import { cookies } from "next/headers"
-import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { DEMO_COOKIE, type DemoPersona } from "@/lib/demo"
 
@@ -18,5 +18,7 @@ export async function setDemoPersona(persona: DemoPersona) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
   })
-  revalidatePath("/", "layout")
+  // Al cambiar de rol, llevar al dashboard (siempre permitido) para que la nueva
+  // restricción de acceso aplique de inmediato y no quede una página no permitida.
+  redirect("/")
 }

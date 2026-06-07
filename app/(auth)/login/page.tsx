@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { DEMO_PERSONAS, type DemoPersona } from "@/lib/demo"
+import { DEMO_PERSONAS, PERSONA_ORDER, type DemoPersona } from "@/lib/demo"
 import { enterDemo } from "@/app/actions/demo-login"
 
 const loginSchema = z.object({
@@ -19,7 +19,6 @@ const loginSchema = z.object({
   password: z.string().min(1, "La contraseña es requerida"),
 })
 type LoginForm = z.infer<typeof loginSchema>
-const PERSONA_ORDER: DemoPersona[] = ["admin", "coordinadora", "chef"]
 
 // ── Paleta local "Pizarra & Champagne" (sin depender de CSS vars al render crítico) ──
 const C = {

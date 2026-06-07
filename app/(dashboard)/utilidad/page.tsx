@@ -14,6 +14,8 @@ const ACCENT = "#1F6E55"
 const C_INSUMOS = "#9A5B3F"   // arcilla
 const C_INDIRECT = "#6B4A2F"  // cacao
 const C_PERSONAL = "#4A5568"  // acero
+const C_COMM = "#7C3A6B"      // ciruela (comisiones)
+const C_OVERHEAD = "#3D5A80"  // azul pizarra (gastos generales prorrateados)
 const LOSS = "#991B1B"
 
 const EVENT_STATUS_LABEL: Record<string, string> = {
@@ -51,7 +53,8 @@ export default async function UtilidadPage({
       quotes(total, status, version_number),
       actual_purchases(total_cost),
       event_indirect_costs(amount),
-      event_staff_assignments(computed_cost)
+      event_staff_assignments(computed_cost),
+      event_commissions(amount)
     `, { count: "exact" })
     .neq("status", "cancelado")
     .order("event_date", { ascending: false })
@@ -59,16 +62,38 @@ export default async function UtilidadPage({
 
   const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE)
 
+  // Gastos generales prorrateados: total del mes ÷ número de eventos del mes.
+  const [{ data: overheadRows }, { data: allEventDates }] = await Promise.all([
+    supabase.from("overhead_expenses").select("period, amount"),
+    supabase.from("events").select("event_date").neq("status", "cancelado"),
+  ])
+  const overheadByMonth: Record<string, number> = {}
+  for (const o of overheadRows ?? []) {
+    const k = (o.period as string).slice(0, 7)
+    overheadByMonth[k] = (overheadByMonth[k] ?? 0) + o.amount
+  }
+  const eventCountByMonth: Record<string, number> = {}
+  for (const e of allEventDates ?? []) {
+    const k = (e.event_date as string).slice(0, 7)
+    eventCountByMonth[k] = (eventCountByMonth[k] ?? 0) + 1
+  }
+  const overheadPerEvent = (monthKey: string) => {
+    const c = eventCountByMonth[monthKey] ?? 0
+    return c > 0 ? (overheadByMonth[monthKey] ?? 0) / c : 0
+  }
+
   type QuoteRow = { total: number; status: string; version_number: number }
   type CostRow = { total_cost: number }
   type IndirectRow = { amount: number }
   type StaffRow = { computed_cost: number }
+  type CommissionRow = { amount: number }
 
   const rows = (events ?? []).map((ev) => {
     const quotes = ev.quotes as QuoteRow[] | null
     const actuals = ev.actual_purchases as CostRow[] | null
     const indirects = ev.event_indirect_costs as IndirectRow[] | null
     const staffAssignments = ev.event_staff_assignments as StaffRow[] | null
+    const commissionsRaw = ev.event_commissions as CommissionRow[] | null
 
     const sortedQuotes = [...(quotes ?? [])].sort((a, b) => b.version_number - a.version_number)
     const approvedQuote = sortedQuotes.find((q) => q.status === "aprobada")
@@ -76,10 +101,12 @@ export default async function UtilidadPage({
     const ingredientCost = (actuals ?? []).reduce((s, a) => s + a.total_cost, 0)
     const indirectCost = (indirects ?? []).reduce((s, i) => s + i.amount, 0)
     const staffCost = (staffAssignments ?? []).reduce((s, a) => s + a.computed_cost, 0)
-    const profit = revenue - ingredientCost - indirectCost - staffCost
+    const commissionCost = (commissionsRaw ?? []).reduce((s, c) => s + c.amount, 0)
+    const overheadCost = overheadPerEvent((ev.event_date as string).slice(0, 7))
+    const profit = revenue - ingredientCost - indirectCost - staffCost - commissionCost - overheadCost
     const margin = revenue > 0 ? (profit / revenue) * 100 : null
 
-    return { ...ev, revenue, ingredientCost, indirectCost, staffCost, profit, margin }
+    return { ...ev, revenue, ingredientCost, indirectCost, staffCost, commissionCost, overheadCost, profit, margin }
   })
 
   const hasActuals = rows.some((r) => r.ingredientCost > 0)
@@ -88,7 +115,9 @@ export default async function UtilidadPage({
   const totalIngredients = rows.reduce((s, r) => s + r.ingredientCost, 0)
   const totalIndirect = rows.reduce((s, r) => s + r.indirectCost, 0)
   const totalStaff = rows.reduce((s, r) => s + r.staffCost, 0)
-  const totalProfit = totalRevenue - totalIngredients - totalIndirect - totalStaff
+  const totalCommissions = rows.reduce((s, r) => s + r.commissionCost, 0)
+  const totalOverhead = rows.reduce((s, r) => s + r.overheadCost, 0)
+  const totalProfit = totalRevenue - totalIngredients - totalIndirect - totalStaff - totalCommissions - totalOverhead
   const totalMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : null
 
   // Anchura proporcional de cada segmento sobre los ingresos (para la barra)
@@ -142,6 +171,8 @@ export default async function UtilidadPage({
                     { v: totalIngredients, c: C_INSUMOS },
                     { v: totalIndirect, c: C_INDIRECT },
                     { v: totalStaff, c: C_PERSONAL },
+                    { v: totalCommissions, c: C_COMM },
+                    { v: totalOverhead, c: C_OVERHEAD },
                     { v: Math.max(0, totalProfit), c: ACCENT },
                   ].filter((s) => s.v > 0).map((s, i) => (
                     <div key={i} style={{ width: `${pct(s.v)}%`, background: s.c }} title={formatCurrency(s.v)} />
@@ -152,6 +183,8 @@ export default async function UtilidadPage({
                     { label: "Insumos", v: totalIngredients, c: C_INSUMOS },
                     { label: "Indirectos", v: totalIndirect, c: C_INDIRECT },
                     { label: "Personal", v: totalStaff, c: C_PERSONAL },
+                    { label: "Comisiones", v: totalCommissions, c: C_COMM },
+                    { label: "Gastos grales.", v: totalOverhead, c: C_OVERHEAD },
                     { label: totalProfit >= 0 ? "Utilidad" : "Pérdida", v: Math.abs(totalProfit), c: totalProfit >= 0 ? ACCENT : LOSS },
                   ].map((s) => (
                     <div key={s.label} className="flex items-center gap-1.5">
@@ -170,6 +203,8 @@ export default async function UtilidadPage({
               <StatementLine label="Insumos (compras)" amount={-totalIngredients} pct={pct(totalIngredients)} sign="minus" dim />
               <StatementLine label="Costos indirectos" amount={-totalIndirect} pct={pct(totalIndirect)} sign="minus" dim />
               <StatementLine label="Personal" amount={-totalStaff} pct={pct(totalStaff)} sign="minus" dim />
+              <StatementLine label="Comisiones" amount={-totalCommissions} pct={pct(totalCommissions)} sign="minus" dim />
+              <StatementLine label="Gastos generales (prorrateo)" amount={-totalOverhead} pct={pct(totalOverhead)} sign="minus" dim />
               <StatementLine label={totalProfit >= 0 ? "Utilidad" : "Pérdida"} amount={totalProfit} pct={totalMargin ?? 0} sign="equal" result resultColor={totalProfit >= 0 ? ACCENT : LOSS} />
             </div>
           </div>
@@ -181,7 +216,7 @@ export default async function UtilidadPage({
               <span className="text-[11px] font-sans text-muted-foreground">{count} en total</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm font-sans min-w-[720px]">
+              <table className="w-full text-sm font-sans min-w-[920px]">
                 <thead>
                   <tr style={{ fontSize: "0.65rem" }} className="font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                     <th className="px-4 py-2 text-left">Evento</th>
@@ -190,6 +225,8 @@ export default async function UtilidadPage({
                     <th className="px-3 py-2 text-right">Insumos</th>
                     <th className="px-3 py-2 text-right">Indirectos</th>
                     <th className="px-3 py-2 text-right">Personal</th>
+                    <th className="px-3 py-2 text-right">Comisiones</th>
+                    <th className="px-3 py-2 text-right">Gastos grales.</th>
                     <th className="px-3 py-2 text-right">Utilidad</th>
                     <th className="px-3 py-2 text-right">Margen</th>
                   </tr>
@@ -223,6 +260,12 @@ export default async function UtilidadPage({
                         </td>
                         <td className="px-3 py-3 text-right mono-data" style={{ color: ev.staffCost > 0 ? C_PERSONAL : "var(--text-3)" }}>
                           {ev.staffCost > 0 ? formatCurrency(ev.staffCost) : "—"}
+                        </td>
+                        <td className="px-3 py-3 text-right mono-data" style={{ color: ev.commissionCost > 0 ? C_COMM : "var(--text-3)" }}>
+                          {ev.commissionCost > 0 ? formatCurrency(ev.commissionCost) : "—"}
+                        </td>
+                        <td className="px-3 py-3 text-right mono-data" style={{ color: ev.overheadCost > 0 ? C_OVERHEAD : "var(--text-3)" }}>
+                          {ev.overheadCost > 0 ? formatCurrency(ev.overheadCost) : "—"}
                         </td>
                         <td className="px-3 py-3 text-right mono-data font-semibold" style={{ color: ev.revenue === 0 ? "var(--text-3)" : profitPositive ? ACCENT : LOSS }}>
                           {ev.revenue === 0 ? "—" : (

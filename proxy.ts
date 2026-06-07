@@ -1,5 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import { DEMO_COOKIE, getPersona } from "@/lib/demo"
+import { canAccessPath } from "@/lib/access"
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -43,6 +45,19 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = "/"
     return NextResponse.redirect(url)
+  }
+
+  // ── Bloqueo de acceso por rol ────────────────────────────────────────────────
+  // Si el usuario está autenticado, su rol (persona demo) solo puede entrar a las
+  // rutas que le competen. Intentar otra por URL lo regresa al dashboard.
+  if (user && !isAuthRoute && !pathname.startsWith("/api")) {
+    const persona = getPersona(request.cookies.get(DEMO_COOKIE)?.value)
+    if (!canAccessPath(persona, pathname)) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/"
+      url.search = ""
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse

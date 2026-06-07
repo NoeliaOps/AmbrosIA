@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { Tables } from "@/lib/supabase/types"
-import { DEMO_PERSONAS, type DemoPersona } from "@/lib/demo"
+import { DEMO_PERSONAS, PERSONA_ORDER, type DemoPersona } from "@/lib/demo"
 import { setDemoPersona } from "@/app/actions/set-demo-persona"
 
 type Profile = Pick<Tables<"profiles">, "full_name" | "email" | "role">
@@ -21,14 +21,18 @@ type SidebarProps = {
   demoPersona: DemoPersona
 }
 
-const CORE_NAV_KEYS: ModuleKey[] = [
-  "dashboard", "calendar", "events", "quotes", "contracts", "templates", "payments",
-  "requisitions", "purchase_orders", "actual_purchases", "inventory", "profit", "staff",
-  "postmortem",
+// Segmentos del menú lateral. Cada segmento se muestra solo si el rol tiene al
+// menos un módulo visible en él. Dashboard va arriba sin encabezado.
+const NAV_SEGMENTS: { label: string | null; keys: ModuleKey[] }[] = [
+  { label: null,        keys: ["dashboard"] },
+  { label: "Agenda",    keys: ["calendar"] },
+  { label: "Operación", keys: ["events", "staff", "postmortem"] },
+  { label: "Comercial", keys: ["quotes", "contracts", "templates"] },
+  { label: "Finanzas",  keys: ["payments", "profit"] },
+  { label: "Abasto",    keys: ["requisitions", "purchase_orders", "actual_purchases", "inventory"] },
 ]
-const PERSONA_ORDER: DemoPersona[] = ["admin", "coordinadora", "chef"]
 
-export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) {
+export function Sidebar({ enabledModules, demoPersona }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [catalogOpen, setCatalogOpen] = useState(pathname.startsWith("/catalogos"))
@@ -56,10 +60,12 @@ export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) 
     startTransition(() => { setDemoPersona(p) })
   }
 
-  const filteredCoreKeys = CORE_NAV_KEYS.filter((key) => {
-    if (!enabledModules.has(key) && key !== "dashboard") return false
-    return persona.allowedModules.includes(key)
-  })
+  const canSee = (key: ModuleKey) =>
+    (key === "dashboard" || enabledModules.has(key)) && persona.allowedModules.includes(key)
+
+  const visibleSegments = NAV_SEGMENTS
+    .map((seg) => ({ label: seg.label, keys: seg.keys.filter(canSee) }))
+    .filter((seg) => seg.keys.length > 0)
 
   const filteredRecipes = persona.showCatalogs
     ? persona.catalogPaths
@@ -72,10 +78,6 @@ export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) 
       ? CATALOG_SECONDARY_NAV.filter((item) => persona.catalogPaths!.includes(item.path))
       : CATALOG_SECONDARY_NAV
     : []
-
-  const initials = profile?.full_name
-    ? profile.full_name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
-    : profile?.email?.[0]?.toUpperCase() ?? "U"
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-sidebar-border"
@@ -175,18 +177,23 @@ export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) 
 
       {/* ── Navigation ────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
-        {filteredCoreKeys.map((key) => {
-          const mod = MODULE_REGISTRY[key]
-          return (
-            <NavItem
-              key={key}
-              href={mod.path}
-              icon={<mod.icon size={14} />}
-              label={mod.label}
-              active={isActive(mod.path)}
-            />
-          )
-        })}
+        {visibleSegments.map((seg, i) => (
+          <div key={seg.label ?? "inicio"} className={i > 0 ? "pt-3" : ""}>
+            {seg.label && <SectionDivider label={seg.label} />}
+            {seg.keys.map((key) => {
+              const mod = MODULE_REGISTRY[key]
+              return (
+                <NavItem
+                  key={key}
+                  href={mod.path}
+                  icon={<mod.icon size={14} />}
+                  label={mod.label}
+                  active={isActive(mod.path)}
+                />
+              )
+            })}
+          </div>
+        ))}
 
         {/* ── Recetas section — hero ────────────── */}
         {filteredRecipes.length > 0 && (
@@ -261,17 +268,12 @@ export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) 
           />
         )}
 
-        {/* User — signed-by line */}
+        {/* User — persona activa */}
         <div className="flex items-center gap-2.5 px-3 py-2.5 mt-1"
           style={{ borderTop: "1px dashed rgb(232 226 216 / 0.1)" }}>
-          <div className="h-7 w-7 rounded-sm flex items-center justify-center shrink-0 text-xs font-semibold"
-            style={{
-              background: "var(--amber)",
-              color: "#0C0C0A",
-              fontFamily: "var(--font-display), Georgia, serif",
-              fontSize: "0.75rem",
-            }}>
-            {initials}
+          <div className={cn("h-7 w-7 rounded-sm flex items-center justify-center shrink-0 text-xs font-bold", persona.color)}
+            style={{ fontFamily: "var(--font-inter)", fontSize: "0.7rem", letterSpacing: "0.04em" }}>
+            {persona.initials}
           </div>
           <div className="flex-1 min-w-0">
             <p style={{
@@ -282,7 +284,7 @@ export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) 
               letterSpacing: "0.01em",
               lineHeight: 1.3,
             }} className="truncate">
-              {profile?.full_name ?? profile?.email ?? "Usuario"}
+              {persona.name}
             </p>
             <p style={{
               fontFamily: "var(--font-mono), ui-monospace, monospace",
@@ -291,7 +293,7 @@ export function Sidebar({ profile, enabledModules, demoPersona }: SidebarProps) 
               textTransform: "uppercase",
               color: "rgb(240 235 226 / 0.28)",
             }} className="truncate">
-              {profile?.role === "admin" ? "Administrador" : profile?.role === "coordinator" ? "Coordinador" : "Chef · Compras"}
+              {persona.title}
             </p>
           </div>
           <Tooltip>

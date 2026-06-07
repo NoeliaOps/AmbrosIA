@@ -31,41 +31,55 @@ export async function generateRequisition(eventId: string) {
 
   if (!event) return { data: null, error: "Evento no encontrado" }
 
-  const { data: quote } = await supabase
-    .from("quotes")
-    .select("id, quote_line_items(type, reference_id, quantity)")
-    .eq("event_id", eventId)
-    .order("version_number", { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!quote) return { data: null, error: "No hay cotización para este evento" }
-
-  const dishItems = (quote.quote_line_items ?? []).filter(
-    (li) => li.type === "dish" && li.reference_id
-  )
-  if (dishItems.length === 0) return { data: null, error: "La cotización no tiene platillos" }
-
-  const dishIds = dishItems.map((li) => li.reference_id!)
-  const { data: dishes } = await supabase
-    .from("dishes")
-    .select("id, servings_yield, recipe_items(quantity, ingredients(id, name, unit, current_price))")
-    .in("id", dishIds)
-
-  if (!dishes) return { data: null, error: "Error al cargar platillos" }
-
   type IngRow = { id: string; name: string; unit: string; current_price: number }
+  type DishWithRecipe = { id: string; servings_yield: number | null; recipe_items: { quantity: number; ingredients: IngRow | null }[] }
+  // Cada fuente aporta un platillo y cuántas porciones se preparan de él.
+  type Source = { dish: DishWithRecipe | null | undefined; servings: number }
+
+  let sources: Source[] = []
+
+  // Fuente primaria: el MENÚ del evento (event_dishes).
+  const { data: eventDishes } = await supabase
+    .from("event_dishes")
+    .select("servings, dishes(id, servings_yield, recipe_items(quantity, ingredients(id, name, unit, current_price)))")
+    .eq("event_id", eventId)
+
+  if (eventDishes && eventDishes.length > 0) {
+    sources = eventDishes.map((ed) => ({ dish: ed.dishes as unknown as DishWithRecipe, servings: ed.servings }))
+  } else {
+    // Fallback: platillos de la cotización (para eventos sin menú definido).
+    const { data: quote } = await supabase
+      .from("quotes")
+      .select("id, quote_line_items(type, reference_id, quantity)")
+      .eq("event_id", eventId)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const dishItems = (quote?.quote_line_items ?? []).filter((li) => li.type === "dish" && li.reference_id)
+    if (dishItems.length === 0) {
+      return { data: null, error: "Define el menú del evento (pestaña Menú) o agrega platillos a la cotización antes de generar la requisición." }
+    }
+    const dishIds = dishItems.map((li) => li.reference_id!)
+    const { data: dishes } = await supabase
+      .from("dishes")
+      .select("id, servings_yield, recipe_items(quantity, ingredients(id, name, unit, current_price))")
+      .in("id", dishIds)
+    sources = dishItems.map((li) => ({
+      dish: (dishes ?? []).find((d) => d.id === li.reference_id) as unknown as DishWithRecipe | undefined,
+      servings: li.quantity,
+    }))
+  }
 
   const ingredientMap = new Map<string, { ingredient_id: string; quantity: number; unit: string; unit_cost: number }>()
 
-  for (const li of dishItems) {
-    const dish = dishes.find((d) => d.id === li.reference_id)
+  for (const src of sources) {
+    const dish = src.dish
     if (!dish) continue
-    const guestCount = li.quantity
-    // servings_yield: how many portions one recipe batch produces.
-    // e.g. yield=10 for 200 guests → need 20 batches, not 200.
-    const yield_ = (dish as { servings_yield?: number }).servings_yield ?? 1
-    const batches = yield_ > 0 ? guestCount / yield_ : guestCount
+    // servings_yield: cuántas porciones produce una "tanda" de la receta.
+    // p. ej. yield=10 para 200 porciones → 20 tandas, no 200.
+    const yield_ = dish.servings_yield ?? 1
+    const batches = yield_ > 0 ? src.servings / yield_ : src.servings
 
     for (const ri of dish.recipe_items) {
       const ing = ri.ingredients as IngRow | null
@@ -75,17 +89,12 @@ export async function generateRequisition(eventId: string) {
       if (prev) {
         prev.quantity += totalQty
       } else {
-        ingredientMap.set(ing.id, {
-          ingredient_id: ing.id,
-          quantity: totalQty,
-          unit: ing.unit,
-          unit_cost: ing.current_price,
-        })
+        ingredientMap.set(ing.id, { ingredient_id: ing.id, quantity: totalQty, unit: ing.unit, unit_cost: ing.current_price })
       }
     }
   }
 
-  if (ingredientMap.size === 0) return { data: null, error: "Los platillos no tienen recetas configuradas" }
+  if (ingredientMap.size === 0) return { data: null, error: "Los platillos del menú no tienen recetas configuradas" }
 
   const { data: requisition, error: reqError } = await supabase
     .from("requisitions")

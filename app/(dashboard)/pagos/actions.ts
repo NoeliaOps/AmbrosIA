@@ -15,7 +15,8 @@ export async function markPaymentPaid(
   eventId: string,
   paidAt: string,
   paidAmount: number,
-  reference?: string
+  reference?: string,
+  discountAmount = 0
 ) {
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)
@@ -24,7 +25,7 @@ export async function markPaymentPaid(
   // Precondition: only transition from "pendiente" — prevents double-payment
   const { error } = await supabase
     .from("payment_schedules")
-    .update({ status: "pagado", paid_at: paidAt, paid_amount: paidAmount, reference: reference ?? null })
+    .update({ status: "pagado", paid_at: paidAt, paid_amount: paidAmount, discount_amount: discountAmount, reference: reference ?? null })
     .eq("id", id)
     .eq("status", "pendiente")
 
@@ -41,7 +42,7 @@ export async function markPaymentPending(id: string, eventId: string) {
 
   const { error } = await supabase
     .from("payment_schedules")
-    .update({ status: "pendiente", paid_at: null, paid_amount: null, reference: null })
+    .update({ status: "pendiente", paid_at: null, paid_amount: null, discount_amount: 0, reference: null })
     .eq("id", id)
     .eq("status", "pagado")
 

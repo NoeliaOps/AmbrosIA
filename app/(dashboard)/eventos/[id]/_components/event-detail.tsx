@@ -9,7 +9,7 @@ import { toast } from "sonner"
 import {
   CalendarDays, MapPin, Users, ChevronRight, Pencil, Check, X,
   ArrowLeft, FileText, ClipboardList, Plus, Trash2, Calendar,
-  Package, ShoppingCart
+  Package, ShoppingCart, UtensilsCrossed
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,7 +23,9 @@ import { formatCurrency, formatDate, formatShortDate, googleCalendarEventUrl } f
 import { EVENT_TYPES } from "@/lib/constants"
 import { updateEvent, updateEventStatus, deleteEvent, createClient2 } from "../../actions"
 import { upsertQuote, updateQuoteStatus, generateContract, updateContract } from "../quote-actions"
-import { createMilestone, updateMilestone, markMilestonePaid, markMilestonePending, deleteMilestone, type MilestoneFormData } from "../payment-actions"
+import { createMilestone, updateMilestone, markMilestonePaid, markMilestonePending, deleteMilestone, generateDefaultPlan, type MilestoneFormData } from "../payment-actions"
+import { createCommission, updateCommission, setCommissionStatus, deleteCommission, type CommissionFormData } from "../commission-actions"
+import { addEventDish, updateEventDishServings, removeEventDish, applyMenuTemplate } from "../menu-actions"
 import { generateRequisition, updateRequisitionStatus, deleteRequisition, generatePurchaseOrders, updatePOStatus } from "../requisition-actions"
 import { sendQuoteEmail, sendContractEmail } from "@/app/actions/send-email"
 import { ComprasTab } from "./compras-tab"
@@ -72,10 +74,28 @@ type PaymentMilestone = {
   status: string
   paid_at: string | null
   paid_amount: number | null
+  discount_amount: number
   reference: string | null
   notes: string | null
   sort_order: number
 }
+
+type EventCommission = {
+  id: string
+  beneficiary: string
+  role: string | null
+  basis: string
+  percentage: number | null
+  amount: number
+  status: string
+  paid_at: string | null
+  notes: string | null
+}
+
+const COMMISSION_ROLES = ["Ventas", "Planner", "Lugar", "Otro"] as const
+
+type EventDishRow = { id: string; dish_id: string; servings: number; sort_order: number }
+type MenuOption = { id: string; name: string }
 
 type ContractClause = { id: string; title: string; content: string }
 
@@ -225,8 +245,8 @@ type EventIndirectCost = {
   indirect_cost_categories: IndirectCostCategory | null
 }
 
-type TabKey = "resumen" | "cotizacion" | "contrato" | "pagos" | "requisicion" | "compras" | "personal"
-const VALID_TABS: TabKey[] = ["resumen", "cotizacion", "contrato", "pagos", "requisicion", "compras", "personal"]
+type TabKey = "resumen" | "menu" | "cotizacion" | "contrato" | "pagos" | "comisiones" | "requisicion" | "compras" | "personal"
+const VALID_TABS: TabKey[] = ["resumen", "menu", "cotizacion", "contrato", "pagos", "comisiones", "requisicion", "compras", "personal"]
 
 type Props = {
   event: Event
@@ -242,6 +262,9 @@ type Props = {
   indirectCostCategories: IndirectCostCategory[]
   staffAssignments: StaffAssignment[]
   staffMembers: StaffMemberCatalog[]
+  commissions: EventCommission[]
+  eventDishes: EventDishRow[]
+  menuTemplates: MenuOption[]
   initialTab?: TabKey
 }
 
@@ -267,7 +290,7 @@ function EmailButton({ action, id, label }: { action: "quote" | "contract"; id: 
   )
 }
 
-export function EventDetail({ event: initial, quote: initialQuote, contract: initialContract, dishes, clients: initialClients, payments: initialPayments, requisition: initialRequisition, purchaseOrders: initialPOs, actualPurchases, indirectCosts, indirectCostCategories, staffAssignments, staffMembers, initialTab }: Props) {
+export function EventDetail({ event: initial, quote: initialQuote, contract: initialContract, dishes, clients: initialClients, payments: initialPayments, requisition: initialRequisition, purchaseOrders: initialPOs, actualPurchases, indirectCosts, indirectCostCategories, staffAssignments, staffMembers, commissions: initialCommissions, eventDishes: initialEventDishes, menuTemplates, initialTab }: Props) {
   const router = useRouter()
   const [event, setEvent] = useState(initial)
   const [quote, setQuote] = useState(initialQuote)
@@ -314,8 +337,23 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
   const [editingMilestone, setEditingMilestone] = useState<PaymentMilestone | null>(null)
   const [payForm, setPayForm] = useState({ description: "", amount: "", due_date: "", notes: "" })
   const [markPaidOpen, setMarkPaidOpen] = useState<PaymentMilestone | null>(null)
-  const [paidForm, setPaidForm] = useState({ paid_at: new Date().toISOString().slice(0, 10), paid_amount: "", reference: "" })
+  const [paidForm, setPaidForm] = useState({ paid_at: new Date().toISOString().slice(0, 10), paid_amount: "", reference: "", discount: "0" })
   const [savingPayment, setSavingPayment] = useState(false)
+  const [generatingPlan, setGeneratingPlan] = useState(false)
+
+  // event menu state
+  const [eventDishes, setEventDishes] = useState<EventDishRow[]>(initialEventDishes)
+  const [menuDishId, setMenuDishId] = useState("")
+  const [menuServings, setMenuServings] = useState("")
+  const [templateMenuId, setTemplateMenuId] = useState("")
+  const [savingMenu, setSavingMenu] = useState(false)
+
+  // commission state
+  const [commissions, setCommissions] = useState<EventCommission[]>(initialCommissions)
+  const [commOpen, setCommOpen] = useState(false)
+  const [editingComm, setEditingComm] = useState<EventCommission | null>(null)
+  const [commForm, setCommForm] = useState<{ beneficiary: string; role: string; basis: "fixed" | "percentage"; percentage: string; amount: string }>({ beneficiary: "", role: "Ventas", basis: "fixed", percentage: "", amount: "" })
+  const [savingComm, setSavingComm] = useState(false)
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<EditValues>({
     resolver: zodResolver(editSchema),
@@ -548,20 +586,32 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
   async function handleMarkPaid() {
     if (!markPaidOpen) return
     setSavingPayment(true)
+    const discount = Number(paidForm.discount) || 0
+    const paidAmount = Number(paidForm.paid_amount) || Math.max(0, markPaidOpen.amount - discount)
     const { error } = await markMilestonePaid(
       markPaidOpen.id, event.id,
       paidForm.paid_at,
-      Number(paidForm.paid_amount) || markPaidOpen.amount,
-      paidForm.reference || undefined
+      paidAmount,
+      paidForm.reference || undefined,
+      discount
     )
     if (error) { toast.error(error); setSavingPayment(false); return }
     setPayments((prev) => prev.map((p) => p.id === markPaidOpen.id
-      ? { ...p, status: "pagado", paid_at: paidForm.paid_at, paid_amount: Number(paidForm.paid_amount) || p.amount, reference: paidForm.reference || null }
+      ? { ...p, status: "pagado", paid_at: paidForm.paid_at, paid_amount: paidAmount, discount_amount: discount, reference: paidForm.reference || null }
       : p
     ))
     toast.success("Pago registrado")
     setMarkPaidOpen(null)
     setSavingPayment(false)
+  }
+
+  async function handleGeneratePlan() {
+    setGeneratingPlan(true)
+    const { data, error } = await generateDefaultPlan(event.id)
+    if (error) { toast.error(error); setGeneratingPlan(false); return }
+    setPayments((data ?? []) as unknown as PaymentMilestone[])
+    toast.success("Plan de pagos generado: 30% anticipo + 70% liquidación")
+    setGeneratingPlan(false)
   }
 
   async function handleUnmarkPaid(p: PaymentMilestone) {
@@ -579,6 +629,104 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
     if (error) { toast.error(error); return }
     setPayments((prev) => prev.filter((m) => m.id !== p.id))
     toast.success("Hito eliminado")
+  }
+
+  // ── event menu ────────────────────────────────────────────────────────────
+
+  async function handleAddDish() {
+    if (!menuDishId) { toast.error("Selecciona un platillo"); return }
+    setSavingMenu(true)
+    const servings = Number(menuServings) || event.guest_count || 1
+    const { data, error } = await addEventDish(event.id, menuDishId, servings)
+    if (error) { toast.error(error); setSavingMenu(false); return }
+    setEventDishes((prev) => [...prev, data as unknown as EventDishRow])
+    setMenuDishId(""); setMenuServings("")
+    toast.success("Platillo agregado al menú")
+    setSavingMenu(false)
+  }
+
+  async function handleUpdateServings(ed: EventDishRow, servings: number) {
+    const v = Math.max(1, Math.round(servings || 1))
+    setEventDishes((prev) => prev.map((x) => x.id === ed.id ? { ...x, servings: v } : x))
+    const { error } = await updateEventDishServings(ed.id, event.id, v)
+    if (error) toast.error(error)
+  }
+
+  async function handleRemoveDish(ed: EventDishRow) {
+    const { error } = await removeEventDish(ed.id, event.id)
+    if (error) { toast.error(error); return }
+    setEventDishes((prev) => prev.filter((x) => x.id !== ed.id))
+    toast.success("Platillo quitado del menú")
+  }
+
+  async function handleApplyTemplate() {
+    if (!templateMenuId) { toast.error("Selecciona un menú"); return }
+    setSavingMenu(true)
+    const { data, error } = await applyMenuTemplate(event.id, templateMenuId)
+    if (error) { toast.error(error); setSavingMenu(false); return }
+    setEventDishes((data ?? []) as unknown as EventDishRow[])
+    setTemplateMenuId("")
+    toast.success("Plantilla de menú aplicada")
+    setSavingMenu(false)
+  }
+
+  // ── commissions ───────────────────────────────────────────────────────────
+
+  // Monto de comisión calculado para el formulario abierto (vista previa).
+  const commFormAmount = commForm.basis === "percentage"
+    ? Math.round((quote?.total ?? 0) * (Number(commForm.percentage) || 0)) / 100
+    : Number(commForm.amount) || 0
+
+  function openNewCommission() {
+    setEditingComm(null)
+    setCommForm({ beneficiary: "", role: "Ventas", basis: "fixed", percentage: "", amount: "" })
+    setCommOpen(true)
+  }
+  function openEditCommission(c: EventCommission) {
+    setEditingComm(c)
+    setCommForm({
+      beneficiary: c.beneficiary,
+      role: c.role ?? "Otro",
+      basis: (c.basis === "percentage" ? "percentage" : "fixed"),
+      percentage: c.percentage != null ? String(c.percentage) : "",
+      amount: String(c.amount),
+    })
+    setCommOpen(true)
+  }
+
+  async function saveCommission() {
+    if (!commForm.beneficiary.trim()) { toast.error("Indica quién recibe la comisión"); return }
+    setSavingComm(true)
+    const pct = commForm.basis === "percentage" ? (Number(commForm.percentage) || 0) : null
+    const amount = commFormAmount
+    const data: CommissionFormData = { beneficiary: commForm.beneficiary.trim(), role: commForm.role, basis: commForm.basis, percentage: pct, amount }
+    if (editingComm) {
+      const { data: upd, error } = await updateCommission(editingComm.id, event.id, data)
+      if (error) { toast.error(error); setSavingComm(false); return }
+      setCommissions((prev) => prev.map((c) => c.id === editingComm.id ? { ...c, ...(upd as unknown as EventCommission) } : c))
+      toast.success("Comisión actualizada")
+    } else {
+      const { data: created, error } = await createCommission(event.id, data)
+      if (error) { toast.error(error); setSavingComm(false); return }
+      setCommissions((prev) => [...prev, created as unknown as EventCommission])
+      toast.success("Comisión agregada")
+    }
+    setCommOpen(false)
+    setSavingComm(false)
+  }
+
+  async function toggleCommissionPaid(c: EventCommission) {
+    const paid = c.status !== "pagada"
+    const { error } = await setCommissionStatus(c.id, event.id, paid)
+    if (error) { toast.error(error); return }
+    setCommissions((prev) => prev.map((x) => x.id === c.id ? { ...x, status: paid ? "pagada" : "pendiente", paid_at: paid ? new Date().toISOString().slice(0, 10) : null } : x))
+  }
+
+  async function handleDeleteCommission(c: EventCommission) {
+    const { error } = await deleteCommission(c.id, event.id)
+    if (error) { toast.error(error); return }
+    setCommissions((prev) => prev.filter((x) => x.id !== c.id))
+    toast.success("Comisión eliminada")
   }
 
   // ── requisition ───────────────────────────────────────────────────────────
@@ -730,8 +878,8 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
       {/* Tabs */}
       <div className="border-b border-border">
         <div className="flex gap-0">
-          {(["resumen", "cotizacion", "contrato", "pagos", "requisicion", "compras", "personal"] as const).map((tab) => {
-            const label = tab === "cotizacion" ? "Cotización" : tab === "contrato" ? "Contrato" : tab === "pagos" ? "Pagos" : tab === "requisicion" ? "Requisición" : tab === "compras" ? "Compras" : tab === "personal" ? "Personal" : "Resumen"
+          {(["resumen", "menu", "cotizacion", "contrato", "pagos", "comisiones", "requisicion", "compras", "personal"] as const).map((tab) => {
+            const label = tab === "menu" ? "Menú" : tab === "cotizacion" ? "Cotización" : tab === "contrato" ? "Contrato" : tab === "pagos" ? "Pagos" : tab === "comisiones" ? "Comisiones" : tab === "requisicion" ? "Requisición" : tab === "compras" ? "Compras" : tab === "personal" ? "Personal" : "Resumen"
             const overdueCount = tab === "pagos" ? payments.filter((p) => computePaymentStatus(p) === "vencido").length : 0
             return (
               <button
@@ -814,6 +962,106 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
           )}
         </div>
       )}
+
+      {/* Tab: Menú */}
+      {activeTab === "menu" && (() => {
+        const rows = [...eventDishes].sort((a, b) => a.sort_order - b.sort_order).map((ed) => {
+          const dish = dishes.find((d) => d.id === ed.dish_id)
+          const perServing = dish ? dishCostPerServing(dish) : 0
+          return { ed, dish, perServing, lineCost: perServing * ed.servings }
+        })
+        const totalMenu = rows.reduce((s, r) => s + r.lineCost, 0)
+        const available = dishes.filter((d) => !eventDishes.some((ed) => ed.dish_id === d.id))
+        return (
+          <div className="space-y-5">
+            <p className="text-sm font-sans text-muted-foreground">
+              El <strong>menú del evento</strong> define los platillos a preparar. De aquí parte la <strong>requisición</strong> de insumos y la orden de compra.
+            </p>
+
+            {/* Aplicar plantilla de menú */}
+            {menuTemplates.length > 0 && (
+              <div className="rounded-lg border border-border bg-muted/20 p-3 flex flex-wrap items-end gap-2">
+                <div className="space-y-1.5 flex-1 min-w-[180px]">
+                  <Label className="font-sans text-xs">Aplicar plantilla del catálogo de menús</Label>
+                  <Select value={templateMenuId} onValueChange={(v) => setTemplateMenuId(v ?? "")}>
+                    <SelectTrigger className="font-sans h-9"><SelectValue placeholder="Selecciona un menú…" /></SelectTrigger>
+                    <SelectContent>
+                      {menuTemplates.map((m) => <SelectItem key={m.id} value={m.id} className="font-sans">{m.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button variant="outline" className="font-sans h-9" disabled={savingMenu || !templateMenuId} onClick={handleApplyTemplate}>
+                  Aplicar plantilla
+                </Button>
+              </div>
+            )}
+
+            {/* Lista del menú */}
+            {rows.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border p-10 text-center space-y-2">
+                <UtensilsCrossed size={26} className="mx-auto text-muted-foreground/30" />
+                <p className="font-heading font-semibold">Menú vacío</p>
+                <p className="text-sm font-sans text-muted-foreground">Agrega platillos del catálogo o aplica una plantilla de menú.</p>
+              </div>
+            ) : (
+              <div className="rounded-md border border-border overflow-hidden">
+                <div className="grid grid-cols-[1fr_110px_120px_120px_40px] gap-2 px-4 py-2 bg-muted/40 text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span>Platillo</span>
+                  <span className="text-center">Porciones</span>
+                  <span className="text-right">Costo/porción</span>
+                  <span className="text-right">Costo total</span>
+                  <span />
+                </div>
+                {rows.map(({ ed, dish, perServing, lineCost }) => (
+                  <div key={ed.id} className="grid grid-cols-[1fr_110px_120px_120px_40px] gap-2 px-4 py-2.5 border-t border-border items-center">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{dish?.name ?? "—"}</p>
+                      {dish?.category && <p className="text-xs font-sans text-muted-foreground">{dish.category}</p>}
+                    </div>
+                    <Input
+                      type="number" min="1" defaultValue={ed.servings}
+                      className="h-8 text-sm font-sans text-center"
+                      onBlur={(e) => { const v = Number(e.target.value); if (v && v !== ed.servings) handleUpdateServings(ed, v) }}
+                    />
+                    <span className="text-right tabular-nums text-sm text-muted-foreground">{formatCurrency(perServing)}</span>
+                    <span className="text-right tabular-nums text-sm font-medium">{formatCurrency(lineCost)}</span>
+                    <button onClick={() => handleRemoveDish(ed)} className="text-muted-foreground hover:text-destructive transition-colors justify-self-center"><Trash2 size={14} /></button>
+                  </div>
+                ))}
+                <div className="grid grid-cols-[1fr_110px_120px_120px_40px] gap-2 px-4 py-2.5 border-t-2 border-border bg-muted/30 items-center">
+                  <span className="text-sm font-sans font-semibold">Costo total del menú</span>
+                  <span />
+                  <span />
+                  <span className="text-right tabular-nums text-sm font-bold">{formatCurrency(totalMenu)}</span>
+                  <span />
+                </div>
+              </div>
+            )}
+
+            {/* Agregar platillo */}
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1.5 flex-1 min-w-[180px]">
+                <Label className="font-sans text-xs">Agregar platillo</Label>
+                <Select value={menuDishId} onValueChange={(v) => setMenuDishId(v ?? "")}>
+                  <SelectTrigger className="font-sans h-9"><SelectValue placeholder="Selecciona un platillo…" /></SelectTrigger>
+                  <SelectContent>
+                    {available.map((d) => (
+                      <SelectItem key={d.id} value={d.id} className="font-sans">{d.name}{d.category ? ` · ${d.category}` : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 w-28">
+                <Label className="font-sans text-xs">Porciones</Label>
+                <Input type="number" min="1" value={menuServings} onChange={(e) => setMenuServings(e.target.value)} placeholder={String(event.guest_count || 1)} className="h-9 font-sans" />
+              </div>
+              <Button className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium h-9" disabled={savingMenu || !menuDishId} onClick={handleAddDish}>
+                <Plus size={14} className="mr-1" /> Agregar
+              </Button>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Tab: Cotización */}
       {activeTab === "cotizacion" && (
@@ -1134,10 +1382,17 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
             {payments.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-10 text-center space-y-3">
                 <p className="font-heading font-semibold">Sin hitos de pago</p>
-                <p className="text-sm font-sans text-muted-foreground">Define el anticipo, pagos parciales y liquidación.</p>
-                <Button onClick={openNewMilestone} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
-                  <Plus size={14} className="mr-1" /> Agregar hito
-                </Button>
+                <p className="text-sm font-sans text-muted-foreground">
+                  Regla general: <strong>30% de anticipo</strong> y <strong>liquidación dos semanas antes</strong> del evento.
+                </p>
+                <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
+                  <Button onClick={handleGeneratePlan} disabled={generatingPlan} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
+                    {generatingPlan ? "Generando…" : "Generar plan sugerido (30% / 70%)"}
+                  </Button>
+                  <Button variant="outline" onClick={openNewMilestone} className="font-sans">
+                    <Plus size={14} className="mr-1" /> Agregar hito manual
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="rounded-md border border-border overflow-hidden">
@@ -1161,8 +1416,11 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
                       </div>
                       <div className="text-right shrink-0">
                         <p className="font-medium tabular-nums text-sm">{formatCurrency(p.amount)}</p>
-                        {p.paid_amount && p.paid_amount !== p.amount && (
-                          <p className="text-xs font-sans text-muted-foreground tabular-nums">Pagado: {formatCurrency(p.paid_amount)}</p>
+                        {p.paid_amount != null && p.paid_amount !== p.amount && (
+                          <p className="text-xs font-sans text-muted-foreground tabular-nums">Cobrado: {formatCurrency(p.paid_amount)}</p>
+                        )}
+                        {p.discount_amount > 0 && (
+                          <p className="text-xs font-sans tabular-nums" style={{ color: "#8B6D24" }}>Desc. pronto pago: {formatCurrency(p.discount_amount)}</p>
                         )}
                       </div>
                       <Badge variant="secondary" className={`font-sans text-xs border shrink-0 ${statusCfg.className}`}>
@@ -1171,7 +1429,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
                       <div className="flex gap-1 shrink-0">
                         {status !== "pagado" ? (
                           <Button size="sm" variant="outline" className="font-sans text-xs h-7 px-2"
-                            onClick={() => { setMarkPaidOpen(p); setPaidForm({ paid_at: new Date().toISOString().slice(0, 10), paid_amount: String(p.amount), reference: "" }) }}>
+                            onClick={() => { setMarkPaidOpen(p); setPaidForm({ paid_at: new Date().toISOString().slice(0, 10), paid_amount: String(p.amount), reference: "", discount: "0" }) }}>
                             <Check size={12} className="mr-1" /> Cobrar
                           </Button>
                         ) : (
@@ -1211,6 +1469,76 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
             {payments.length > 0 && (
               <Button variant="outline" size="sm" className="font-sans" onClick={openNewMilestone}>
                 <Plus size={14} className="mr-1" /> Agregar hito
+              </Button>
+            )}
+          </div>
+        )
+      })()}
+
+      {/* Tab: Comisiones */}
+      {activeTab === "comisiones" && (() => {
+        const totalComm = commissions.reduce((s, c) => s + c.amount, 0)
+        const pagadas = commissions.filter((c) => c.status === "pagada").reduce((s, c) => s + c.amount, 0)
+        const pendientes = totalComm - pagadas
+        return (
+          <div className="space-y-5">
+            <p className="text-sm font-sans text-muted-foreground">
+              Comisiones a vendedores, planners o al lugar del evento. Se descuentan de la utilidad del evento.
+            </p>
+
+            {commissions.length > 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Total comisiones", value: totalComm },
+                  { label: "Pagadas", value: pagadas },
+                  { label: "Pendientes", value: pendientes },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-lg border border-border p-3 space-y-0.5">
+                    <p className="text-xs font-sans text-muted-foreground">{s.label}</p>
+                    <p className="text-lg font-heading font-bold tabular-nums">{formatCurrency(s.value)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {commissions.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border p-10 text-center space-y-3">
+                <p className="font-heading font-semibold">Sin comisiones</p>
+                <p className="text-sm font-sans text-muted-foreground">Registra comisiones a vendedores, planners o al lugar del evento.</p>
+                <Button onClick={openNewCommission} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
+                  <Plus size={14} className="mr-1" /> Agregar comisión
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-md border border-border overflow-hidden">
+                {commissions.map((c, i) => (
+                  <div key={c.id} className={`flex items-center gap-3 px-4 py-3 ${i > 0 ? "border-t border-border" : ""}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{c.beneficiary}</p>
+                      <p className="text-xs font-sans text-muted-foreground">
+                        {c.role ?? "Otro"}{c.basis === "percentage" && c.percentage != null ? ` · ${c.percentage}% de la cotización` : " · monto fijo"}
+                        {c.paid_at ? ` · pagada ${formatDate(c.paid_at)}` : ""}
+                      </p>
+                    </div>
+                    <p className="font-medium tabular-nums text-sm shrink-0">{formatCurrency(c.amount)}</p>
+                    <Badge variant="secondary" className={`font-sans text-xs border shrink-0 ${c.status === "pagada" ? "pill-active" : "pill-warning"}`}>
+                      {c.status === "pagada" ? "Pagada" : "Pendiente"}
+                    </Badge>
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="sm" variant="outline" className="font-sans text-xs h-7 px-2" onClick={() => toggleCommissionPaid(c)}>
+                        {c.status === "pagada" ? "Revertir" : (<><Check size={12} className="mr-1" /> Pagar</>)}
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditCommission(c)}><Pencil size={12} /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteCommission(c)}><Trash2 size={12} /></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {commissions.length > 0 && (
+              <Button variant="outline" size="sm" className="font-sans" onClick={openNewCommission}>
+                <Plus size={14} className="mr-1" /> Agregar comisión
               </Button>
             )}
           </div>
@@ -1479,16 +1807,29 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
             <DialogTitle className="font-heading">Registrar pago</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-sm font-sans text-muted-foreground">{markPaidOpen?.description}</p>
+            <p className="text-sm font-sans text-muted-foreground">
+              {markPaidOpen?.description} · monto del hito <span className="tabular-nums font-medium text-foreground">{formatCurrency(markPaidOpen?.amount ?? 0)}</span>
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="font-sans">Fecha de pago *</Label>
                 <Input type="date" value={paidForm.paid_at} onChange={(e) => setPaidForm((f) => ({ ...f, paid_at: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
-                <Label className="font-sans">Monto recibido</Label>
-                <Input type="number" step="0.01" min="0" value={paidForm.paid_amount} onChange={(e) => setPaidForm((f) => ({ ...f, paid_amount: e.target.value }))} />
+                <Label className="font-sans">Descuento pronto pago</Label>
+                <Input
+                  type="number" step="0.01" min="0" value={paidForm.discount}
+                  onChange={(e) => {
+                    const disc = Number(e.target.value) || 0
+                    setPaidForm((f) => ({ ...f, discount: e.target.value, paid_amount: String(Math.max(0, (markPaidOpen?.amount ?? 0) - disc)) }))
+                  }}
+                />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-sans">Monto recibido</Label>
+              <Input type="number" step="0.01" min="0" value={paidForm.paid_amount} onChange={(e) => setPaidForm((f) => ({ ...f, paid_amount: e.target.value }))} />
+              <p className="text-[11px] font-sans text-muted-foreground">Se calcula como monto − descuento; puedes ajustarlo (p. ej. pago parcial).</p>
             </div>
             <div className="space-y-1.5">
               <Label className="font-sans">Referencia / comprobante</Label>
@@ -1499,6 +1840,57 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
             <Button variant="outline" onClick={() => setMarkPaidOpen(null)} className="font-sans">Cancelar</Button>
             <Button onClick={handleMarkPaid} disabled={savingPayment} className="bg-emerald-600 hover:bg-emerald-700 text-white font-sans font-medium">
               {savingPayment ? "Guardando…" : "Confirmar pago"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Commission dialog */}
+      <Dialog open={commOpen} onOpenChange={setCommOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-heading">{editingComm ? "Editar comisión" : "Nueva comisión"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="font-sans">Beneficiario *</Label>
+              <Input value={commForm.beneficiary} onChange={(e) => setCommForm((f) => ({ ...f, beneficiary: e.target.value }))} placeholder="Nombre del vendedor, planner o lugar" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-sans">Tipo</Label>
+              <Select value={commForm.role} onValueChange={(v) => setCommForm((f) => ({ ...f, role: v ?? "Otro" }))}>
+                <SelectTrigger className="font-sans"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {COMMISSION_ROLES.map((r) => <SelectItem key={r} value={r} className="font-sans">{r}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-sans">Base de cálculo</Label>
+              <div className="flex gap-2">
+                <Button type="button" size="sm" variant={commForm.basis === "fixed" ? "default" : "outline"} className="font-sans text-xs" onClick={() => setCommForm((f) => ({ ...f, basis: "fixed" }))}>Monto fijo</Button>
+                <Button type="button" size="sm" variant={commForm.basis === "percentage" ? "default" : "outline"} className="font-sans text-xs" onClick={() => setCommForm((f) => ({ ...f, basis: "percentage" }))}>% de cotización</Button>
+              </div>
+            </div>
+            {commForm.basis === "percentage" ? (
+              <div className="space-y-1.5">
+                <Label className="font-sans">Porcentaje (%)</Label>
+                <Input type="number" step="0.1" min="0" max="100" value={commForm.percentage} onChange={(e) => setCommForm((f) => ({ ...f, percentage: e.target.value }))} placeholder="Ej. 5" />
+                <p className="text-[11px] font-sans text-muted-foreground">
+                  Sobre la cotización ({formatCurrency(quote?.total ?? 0)}) = <span className="font-medium text-foreground tabular-nums">{formatCurrency(commFormAmount)}</span>
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label className="font-sans">Monto (MXN) *</Label>
+                <Input type="number" step="0.01" min="0" value={commForm.amount} onChange={(e) => setCommForm((f) => ({ ...f, amount: e.target.value }))} placeholder="0.00" />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCommOpen(false)} className="font-sans">Cancelar</Button>
+            <Button onClick={saveCommission} disabled={savingComm} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
+              {savingComm ? "Guardando…" : editingComm ? "Guardar" : "Agregar"}
             </Button>
           </DialogFooter>
         </DialogContent>

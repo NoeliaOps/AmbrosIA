@@ -875,6 +875,47 @@ export type Database = {
           }
         ]
       }
+      overhead_expenses: {
+        Row: {
+          amount: number
+          concept: string
+          created_at: string
+          id: string
+          notes: string | null
+          org_id: string
+          period: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          concept: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          org_id: string
+          period: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          concept?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          org_id?: string
+          period?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overhead_expenses_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_schedules: {
         Row: {
           id: string
@@ -885,6 +926,7 @@ export type Database = {
           status: string
           paid_at: string | null
           paid_amount: number | null
+          discount_amount: number
           reference: string | null
           notes: string | null
           sort_order: number
@@ -900,6 +942,7 @@ export type Database = {
           status?: string
           paid_at?: string | null
           paid_amount?: number | null
+          discount_amount?: number
           reference?: string | null
           notes?: string | null
           sort_order?: number
@@ -915,6 +958,7 @@ export type Database = {
           status?: string
           paid_at?: string | null
           paid_amount?: number | null
+          discount_amount?: number
           reference?: string | null
           notes?: string | null
           sort_order?: number
@@ -1123,6 +1167,58 @@ export type Database = {
           }
         ]
       }
+      event_dishes: {
+        Row: {
+          created_at: string
+          dish_id: string
+          event_id: string
+          id: string
+          org_id: string
+          servings: number
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          dish_id: string
+          event_id: string
+          id?: string
+          org_id: string
+          servings?: number
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          dish_id?: string
+          event_id?: string
+          id?: string
+          org_id?: string
+          servings?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_dishes_dish_id_fkey"
+            columns: ["dish_id"]
+            isOneToOne: false
+            referencedRelation: "dishes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_dishes_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_dishes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_indirect_costs: {
         Row: {
           id: string
@@ -1213,6 +1309,69 @@ export type Database = {
             referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
           }
+        ]
+      }
+      event_commissions: {
+        Row: {
+          amount: number
+          basis: string
+          beneficiary: string
+          created_at: string
+          event_id: string
+          id: string
+          notes: string | null
+          org_id: string
+          paid_at: string | null
+          percentage: number | null
+          role: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          basis?: string
+          beneficiary: string
+          created_at?: string
+          event_id: string
+          id?: string
+          notes?: string | null
+          org_id: string
+          paid_at?: string | null
+          percentage?: number | null
+          role?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          basis?: string
+          beneficiary?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          notes?: string | null
+          org_id?: string
+          paid_at?: string | null
+          percentage?: number | null
+          role?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_commissions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_commissions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       event_postmortems: {

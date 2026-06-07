@@ -2,8 +2,8 @@ import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { EventDetail } from "./_components/event-detail"
 
-type TabKey = "resumen" | "cotizacion" | "contrato" | "pagos" | "requisicion" | "compras" | "personal"
-const VALID_TABS: TabKey[] = ["resumen", "cotizacion", "contrato", "pagos", "requisicion", "compras", "personal"]
+type TabKey = "resumen" | "menu" | "cotizacion" | "contrato" | "pagos" | "comisiones" | "requisicion" | "compras" | "personal"
+const VALID_TABS: TabKey[] = ["resumen", "menu", "cotizacion", "contrato", "pagos", "comisiones", "requisicion", "compras", "personal"]
 
 type Props = {
   params: Promise<{ id: string }>
@@ -38,6 +38,9 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     { data: indirectCostCategories },
     { data: staffAssignments },
     { data: staffMembers },
+    { data: commissions },
+    { data: eventDishes },
+    { data: menuTemplates },
   ] = await Promise.all([
     supabase
       .from("events")
@@ -104,6 +107,20 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
       .select("id, name, position, rate, rate_type, phone")
       .eq("is_active", true)
       .order("name"),
+    supabase
+      .from("event_commissions")
+      .select("id, beneficiary, role, basis, percentage, amount, status, paid_at, notes")
+      .eq("event_id", id)
+      .order("created_at"),
+    supabase
+      .from("event_dishes")
+      .select("id, dish_id, servings, sort_order")
+      .eq("event_id", id)
+      .order("sort_order"),
+    supabase
+      .from("menus")
+      .select("id, name")
+      .order("name"),
   ])
 
   if (!event) notFound()
@@ -123,6 +140,9 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
       indirectCostCategories={(indirectCostCategories ?? []) as Parameters<typeof EventDetail>[0]["indirectCostCategories"]}
       staffAssignments={(staffAssignments ?? []) as Parameters<typeof EventDetail>[0]["staffAssignments"]}
       staffMembers={(staffMembers ?? []) as Parameters<typeof EventDetail>[0]["staffMembers"]}
+      commissions={(commissions ?? []) as Parameters<typeof EventDetail>[0]["commissions"]}
+      eventDishes={(eventDishes ?? []) as Parameters<typeof EventDetail>[0]["eventDishes"]}
+      menuTemplates={(menuTemplates ?? []) as Parameters<typeof EventDetail>[0]["menuTemplates"]}
       initialTab={initialTab}
     />
   )
