@@ -11,7 +11,7 @@ export default async function IngredientesPage() {
   const [{ data: ingredients }, { data: suppliers }] = await Promise.all([
     supabase
       .from("ingredients")
-      .select("id, name, unit, category, current_price, preferred_supplier_id, notes, updated_at, suppliers(name)")
+      .select("id, name, unit, category, current_price, preferred_supplier_id, notes, updated_at, suppliers(name), ingredient_purchase_units(id, unit, factor, price, supplier_id, is_default, whole_units)")
       .order("name"),
     supabase
       .from("suppliers")

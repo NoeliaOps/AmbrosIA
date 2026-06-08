@@ -33,7 +33,7 @@ export async function createIngredient(data: IngredientFormData) {
   const { data: ingredient, error } = await supabase
     .from("ingredients")
     .insert({ ...parsed.data, org_id: orgId })
-    .select("*, suppliers(name)")
+    .select("id")
     .single()
 
   if (error) return { data: null, error: error.message }
@@ -45,8 +45,27 @@ export async function createIngredient(data: IngredientFormData) {
     notes: "Precio inicial",
   })
 
+  // Crea la presentación de compra base (1 [unidad] = 1 unidad base, precio inicial),
+  // predeterminada. Luego el usuario puede agregar kg/caja/pieza con sus equivalencias.
+  await supabase.from("ingredient_purchase_units").insert({
+    org_id: orgId,
+    ingredient_id: ingredient.id,
+    unit: parsed.data.unit,
+    factor: 1,
+    price: parsed.data.current_price,
+    supplier_id: parsed.data.preferred_supplier_id ?? null,
+    is_default: true,
+    whole_units: false,
+  })
+
+  const { data: full } = await supabase
+    .from("ingredients")
+    .select("*, suppliers(name), ingredient_purchase_units(id, unit, factor, price, supplier_id, is_default, whole_units)")
+    .eq("id", ingredient.id)
+    .single()
+
   revalidatePath("/catalogos/ingredientes")
-  return { data: ingredient, error: null }
+  return { data: full, error: null }
 }
 
 export async function updateIngredient(id: string, data: IngredientFormData, prevPrice: number) {

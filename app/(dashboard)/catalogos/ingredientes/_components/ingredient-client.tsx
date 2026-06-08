@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Package, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { Plus, Pencil, Trash2, Package, AlertTriangle, CheckCircle2, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,8 +15,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { DataTable, type Column } from "@/components/tables/data-table"
 import { EmptyState } from "@/components/ui/empty-state"
 import { formatCurrency } from "@/lib/utils"
+import { basePriceFrom } from "@/lib/units"
 import { INGREDIENT_CATEGORIES, UNITS_OF_MEASURE } from "@/lib/constants"
 import { createIngredient, updateIngredient, deleteIngredient, type IngredientFormData } from "../actions"
+import { updatePurchaseUnit } from "../purchase-unit-actions"
+import { PurchaseUnitsDialog, type PurchaseUnit } from "./purchase-units-dialog"
 
 type Supplier = { id: string; name: string }
 
@@ -30,6 +33,7 @@ type Ingredient = {
   notes: string | null
   updated_at: string
   suppliers: { name: string } | null
+  ingredient_purchase_units: PurchaseUnit[]
 }
 
 // ── Price freshness ─────────────────────────────────────────────────────────
@@ -62,86 +66,76 @@ function PriceFreshness({ updatedAt }: { updatedAt: string }) {
 
 // ── Inline price cell ────────────────────────────────────────────────────────
 
+function defaultUnit(ing: Ingredient): PurchaseUnit | null {
+  const units = ing.ingredient_purchase_units ?? []
+  return units.find((u) => u.is_default) ?? units[0] ?? null
+}
+
 function PriceCell({
   ingredient,
   onSaved,
 }: {
   ingredient: Ingredient
-  onSaved: (id: string, newPrice: number, updatedAt: string) => void
+  onSaved: (id: string, units: PurchaseUnit[], basePrice: number, updatedAt: string) => void
 }) {
+  const def = defaultUnit(ingredient)
   const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState(String(ingredient.current_price))
+  const [value, setValue] = useState(String(def?.price ?? ingredient.current_price))
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   function startEdit() {
-    setValue(String(ingredient.current_price))
+    if (!def) return
+    setValue(String(def.price))
     setEditing(true)
     setTimeout(() => { inputRef.current?.select() }, 0)
   }
 
   async function save() {
+    if (!def) { setEditing(false); return }
     const newPrice = parseFloat(value)
-    if (isNaN(newPrice) || newPrice < 0 || newPrice === ingredient.current_price) {
-      setEditing(false)
-      return
-    }
+    if (isNaN(newPrice) || newPrice < 0 || newPrice === def.price) { setEditing(false); return }
     setSaving(true)
-    const payload: IngredientFormData = {
-      name: ingredient.name,
-      unit: ingredient.unit,
-      category: ingredient.category ?? undefined,
-      current_price: newPrice,
-      preferred_supplier_id: ingredient.preferred_supplier_id ?? null,
-      notes: ingredient.notes ?? undefined,
-    }
-    const { data: updated, error } = await updateIngredient(ingredient.id, payload, ingredient.current_price)
+    const { data, error } = await updatePurchaseUnit(def.id, ingredient.id, {
+      unit: def.unit, factor: def.factor, price: newPrice, supplier_id: def.supplier_id, whole_units: def.whole_units, is_default: true,
+    })
     setSaving(false)
-    if (error) { toast.error(error); setEditing(false); return }
+    if (error || !data) { toast.error(error ?? "Error"); setEditing(false); return }
+    const row = data as unknown as PurchaseUnit
+    const units = (ingredient.ingredient_purchase_units ?? []).map((u) => u.id === row.id ? row : u)
     toast.success("Precio actualizado")
     setEditing(false)
-    onSaved(ingredient.id, newPrice, (updated as { updated_at?: string })?.updated_at ?? new Date().toISOString())
+    onSaved(ingredient.id, units, basePriceFrom(row), new Date().toISOString())
   }
 
-  if (editing) {
+  if (editing && def) {
     return (
       <input
-        ref={inputRef}
-        type="number"
-        step="0.01"
-        min="0"
-        value={value}
+        ref={inputRef} type="number" step="0.01" min="0" value={value}
         onChange={(e) => setValue(e.target.value)}
         onBlur={save}
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); save() } if (e.key === "Escape") setEditing(false) }}
         disabled={saving}
-        style={{
-          width: "7rem",
-          fontFamily: "var(--font-mono)",
-          fontSize: "0.8125rem",
-          fontWeight: 600,
-          color: "var(--amber)",
-          background: "var(--surface-2)",
-          border: "1px solid var(--amber)",
-          borderRadius: "4px",
-          padding: "0.2rem 0.4rem",
-          outline: "none",
-        }}
+        style={{ width: "7rem", fontFamily: "var(--font-mono)", fontSize: "0.8125rem", fontWeight: 600, color: "var(--amber)", background: "var(--surface-2)", border: "1px solid var(--amber)", borderRadius: "4px", padding: "0.2rem 0.4rem", outline: "none" }}
       />
     )
   }
 
   return (
-    <button
-      onClick={startEdit}
-      title="Click para editar precio"
-      className="group flex items-center gap-1.5 rounded px-1 -ml-1 transition-colors hover:bg-amber-glow"
-      style={{ cursor: "text" }}
-    >
-      <span className="mono-data" style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-1)" }}>
-        {formatCurrency(ingredient.current_price)}
+    <button onClick={startEdit} title="Click para editar el precio de la presentación predeterminada"
+      className="group flex flex-col items-start rounded px-1 -ml-1 transition-colors hover:bg-amber-glow" style={{ cursor: "text" }}>
+      <span className="flex items-center gap-1.5">
+        <span className="mono-data" style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-1)" }}>
+          {formatCurrency(def?.price ?? ingredient.current_price)}
+        </span>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.62rem", color: "var(--text-3)" }}>/ {def?.unit ?? ingredient.unit}</span>
+        <Pencil size={10} className="opacity-0 group-hover:opacity-40 transition-opacity" style={{ color: "var(--amber)" }} />
       </span>
-      <Pencil size={10} className="opacity-0 group-hover:opacity-40 transition-opacity" style={{ color: "var(--amber)" }} />
+      {def && def.factor !== 1 && (
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", color: "var(--text-3)" }}>
+          = {formatCurrency(basePriceFrom(def))}/{ingredient.unit}
+        </span>
+      )}
     </button>
   )
 }
@@ -165,6 +159,7 @@ export function IngredientClient({ ingredients: initial, suppliers }: Props) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Ingredient | null>(null)
   const [deleting, setDeleting] = useState<Ingredient | null>(null)
+  const [puIngredient, setPuIngredient] = useState<Ingredient | null>(null)
   const [loading, setLoading] = useState(false)
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormValues>({
@@ -172,10 +167,17 @@ export function IngredientClient({ ingredients: initial, suppliers }: Props) {
     defaultValues: { current_price: 0 },
   })
 
-  function handlePriceSaved(id: string, newPrice: number, updatedAt: string) {
+  function handlePriceSaved(id: string, units: PurchaseUnit[], basePrice: number, updatedAt: string) {
     setIngredients((prev) =>
-      prev.map((i) => i.id === id ? { ...i, current_price: newPrice, updated_at: updatedAt } : i)
+      prev.map((i) => i.id === id ? { ...i, ingredient_purchase_units: units, current_price: basePrice, updated_at: updatedAt } : i)
     )
+  }
+
+  function handleUnitsChanged(id: string, units: PurchaseUnit[], basePrice: number) {
+    setIngredients((prev) =>
+      prev.map((i) => i.id === id ? { ...i, ingredient_purchase_units: units, current_price: basePrice, updated_at: new Date().toISOString() } : i)
+    )
+    setPuIngredient((prev) => prev && prev.id === id ? { ...prev, ingredient_purchase_units: units, current_price: basePrice } : prev)
   }
 
   function openCreate() { setEditing(null); reset({ current_price: 0 }); setOpen(true) }
@@ -244,6 +246,15 @@ export function IngredientClient({ ingredients: initial, suppliers }: Props) {
       cell: (row) => <PriceFreshness updatedAt={row.updated_at} /> },
     { key: "suppliers", header: "Proveedor",
       cell: (row) => <span style={{ fontFamily: "var(--font-sans)", fontSize: "0.75rem", color: "var(--text-2)" }}>{row.suppliers?.name ?? "—"}</span> },
+    { key: "purchase_units", header: "Compra",
+      cell: (row) => {
+        const n = (row.ingredient_purchase_units ?? []).length
+        return (
+          <Button size="sm" variant="outline" className="h-7 text-xs font-sans gap-1" onClick={() => setPuIngredient(row)}>
+            <Layers size={12} /> {n} present.
+          </Button>
+        )
+      }},
     { key: "actions", header: "", className: "w-20 text-right",
       cell: (row) => (
         <div className="flex justify-end gap-1">
@@ -308,7 +319,7 @@ export function IngredientClient({ ingredients: initial, suppliers }: Props) {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="font-sans">Unidad de medida *</Label>
+                <Label className="font-sans">Unidad base / de receta *</Label>
                 <Select value={watchUnit} onValueChange={(v) => setValue("unit", v ?? "")}>
                   <SelectTrigger className="font-sans"><SelectValue placeholder="Selecciona" /></SelectTrigger>
                   <SelectContent>
@@ -332,11 +343,18 @@ export function IngredientClient({ ingredients: initial, suppliers }: Props) {
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="font-sans">Precio actual (MXN / unidad) *</Label>
-                <Input {...register("current_price", { valueAsNumber: true })} type="number" step="0.01" min="0" placeholder="0.00" />
-                {errors.current_price && <p className="text-xs text-destructive">{errors.current_price.message}</p>}
-              </div>
+              {!editing ? (
+                <div className="space-y-1.5">
+                  <Label className="font-sans">Precio inicial (MXN / unidad base) *</Label>
+                  <Input {...register("current_price", { valueAsNumber: true })} type="number" step="0.01" min="0" placeholder="0.00" />
+                  {errors.current_price && <p className="text-xs text-destructive">{errors.current_price.message}</p>}
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <Label className="font-sans">Precio</Label>
+                  <p className="text-xs font-sans text-muted-foreground pt-2">Se gestiona en <strong>Presentaciones de compra</strong> (columna “Compra”).</p>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label className="font-sans">Proveedor preferido</Label>
@@ -383,6 +401,19 @@ export function IngredientClient({ ingredients: initial, suppliers }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Presentaciones de compra */}
+      {puIngredient && (
+        <PurchaseUnitsDialog
+          key={puIngredient.id}
+          open={!!puIngredient}
+          onOpenChange={(o) => !o && setPuIngredient(null)}
+          ingredient={{ id: puIngredient.id, name: puIngredient.name, unit: puIngredient.unit }}
+          units={puIngredient.ingredient_purchase_units ?? []}
+          suppliers={suppliers}
+          onChange={(units, basePrice) => handleUnitsChanged(puIngredient.id, units, basePrice)}
+        />
+      )}
     </>
   )
 }

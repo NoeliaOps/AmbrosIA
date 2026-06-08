@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { purchaseFromBase } from "@/lib/units"
 
 async function getOrgId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -189,17 +190,53 @@ export async function generatePurchaseOrders(requisitionId: string, eventId: str
   eventDate.setDate(eventDate.getDate() - 7)
   const buyByDate = eventDate.toISOString().slice(0, 10)
 
-  const supplierMap = new Map<string, ReqItem[]>()
-  for (const item of items) {
-    const key = item.ingredients?.preferred_supplier_id ?? "no_supplier"
-    if (!supplierMap.has(key)) supplierMap.set(key, [])
-    supplierMap.get(key)!.push(item)
+  // Presentación de compra predeterminada por insumo (para convertir la necesidad
+  // en unidad base → cantidad a comprar en su presentación: caja, kg, pieza…).
+  type PU = { ingredient_id: string; unit: string; factor: number; price: number; supplier_id: string | null; whole_units: boolean }
+  const { data: puRows } = await supabase
+    .from("ingredient_purchase_units")
+    .select("ingredient_id, unit, factor, price, supplier_id, whole_units")
+    .in("ingredient_id", items.map((i) => i.ingredient_id))
+    .eq("is_default", true)
+  const defByIngredient = new Map<string, PU>()
+  for (const r of (puRows ?? []) as PU[]) defByIngredient.set(r.ingredient_id, r)
+
+  // Convierte cada ítem a su presentación de compra.
+  type Line = { ingredient_id: string; unit: string; quantity: number; unit_cost: number; total_cost: number; supplierKey: string }
+  const lines: Line[] = items.map((item) => {
+    const def = defByIngredient.get(item.ingredient_id)
+    if (def) {
+      const qty = purchaseFromBase(item.quantity, { factor: def.factor, whole_units: def.whole_units })
+      return {
+        ingredient_id: item.ingredient_id,
+        unit: def.unit,
+        quantity: qty,
+        unit_cost: def.price,
+        total_cost: Math.round(qty * def.price * 100) / 100,
+        supplierKey: def.supplier_id ?? item.ingredients?.preferred_supplier_id ?? "no_supplier",
+      }
+    }
+    // Fallback: sin presentación (no debería ocurrir) → unidad base tal cual.
+    return {
+      ingredient_id: item.ingredient_id,
+      unit: item.unit,
+      quantity: item.quantity,
+      unit_cost: item.unit_cost,
+      total_cost: item.total_cost,
+      supplierKey: item.ingredients?.preferred_supplier_id ?? "no_supplier",
+    }
+  })
+
+  const supplierMap = new Map<string, Line[]>()
+  for (const line of lines) {
+    if (!supplierMap.has(line.supplierKey)) supplierMap.set(line.supplierKey, [])
+    supplierMap.get(line.supplierKey)!.push(line)
   }
 
   const createdPOs = []
-  for (const [key, groupItems] of supplierMap.entries()) {
+  for (const [key, groupLines] of supplierMap.entries()) {
     const supplierId = key === "no_supplier" ? null : key
-    const subtotal = groupItems.reduce((s, i) => s + i.total_cost, 0)
+    const subtotal = Math.round(groupLines.reduce((s, i) => s + i.total_cost, 0) * 100) / 100
 
     const { data: po, error: poError } = await supabase
       .from("purchase_orders")
@@ -217,13 +254,13 @@ export async function generatePurchaseOrders(requisitionId: string, eventId: str
 
     if (poError) return { data: null, error: poError.message }
 
-    const poItems = groupItems.map((item) => ({
+    const poItems = groupLines.map((line) => ({
       purchase_order_id: po.id,
-      ingredient_id: item.ingredient_id,
-      quantity: item.quantity,
-      unit: item.unit,
-      unit_cost: item.unit_cost,
-      total_cost: item.total_cost,
+      ingredient_id: line.ingredient_id,
+      quantity: line.quantity,
+      unit: line.unit,
+      unit_cost: line.unit_cost,
+      total_cost: line.total_cost,
     }))
 
     const { error: poItemsError } = await supabase.from("purchase_order_items").insert(poItems)

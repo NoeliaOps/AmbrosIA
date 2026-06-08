@@ -162,6 +162,70 @@ export type Database = {
           }
         ]
       }
+      ingredient_purchase_units: {
+        Row: {
+          created_at: string
+          factor: number
+          id: string
+          ingredient_id: string
+          is_default: boolean
+          org_id: string
+          price: number
+          supplier_id: string | null
+          unit: string
+          updated_at: string
+          whole_units: boolean
+        }
+        Insert: {
+          created_at?: string
+          factor?: number
+          id?: string
+          ingredient_id: string
+          is_default?: boolean
+          org_id: string
+          price?: number
+          supplier_id?: string | null
+          unit: string
+          updated_at?: string
+          whole_units?: boolean
+        }
+        Update: {
+          created_at?: string
+          factor?: number
+          id?: string
+          ingredient_id?: string
+          is_default?: boolean
+          org_id?: string
+          price?: number
+          supplier_id?: string | null
+          unit?: string
+          updated_at?: string
+          whole_units?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_purchase_units_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredient_purchase_units_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredient_purchase_units_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingredients: {
         Row: {
           id: string
