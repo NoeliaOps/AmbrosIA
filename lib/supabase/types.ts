@@ -440,6 +440,7 @@ export type Database = {
           org_id: string
           quantity: number
           updated_at: string
+          warehouse_id: string
         }
         Insert: {
           created_at?: string
@@ -450,6 +451,7 @@ export type Database = {
           org_id: string
           quantity?: number
           updated_at?: string
+          warehouse_id: string
         }
         Update: {
           created_at?: string
@@ -460,6 +462,7 @@ export type Database = {
           org_id?: string
           quantity?: number
           updated_at?: string
+          warehouse_id?: string
         }
         Relationships: [
           {
@@ -471,6 +474,120 @@ export type Database = {
           },
           {
             foreignKeyName: "inventory_items_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_items_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_movements: {
+        Row: {
+          created_at: string
+          event_id: string | null
+          id: string
+          ingredient_id: string
+          notes: string | null
+          org_id: string
+          purchase_order_id: string | null
+          quantity: number
+          reference: string | null
+          transfer_group: string | null
+          type: string
+          unit_cost: number | null
+          warehouse_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          ingredient_id: string
+          notes?: string | null
+          org_id: string
+          purchase_order_id?: string | null
+          quantity: number
+          reference?: string | null
+          transfer_group?: string | null
+          type: string
+          unit_cost?: number | null
+          warehouse_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          ingredient_id?: string
+          notes?: string | null
+          org_id?: string
+          purchase_order_id?: string | null
+          quantity?: number
+          reference?: string | null
+          transfer_group?: string | null
+          type?: string
+          unit_cost?: number | null
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warehouses: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          location: string | null
+          name: string
+          notes: string | null
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          location?: string | null
+          name: string
+          notes?: string | null
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          location?: string | null
+          name?: string
+          notes?: string | null
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouses_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"

@@ -1,8 +1,9 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Search, AlertTriangle, Warehouse } from "lucide-react"
+import { Plus, Pencil, Trash2, AlertTriangle, Warehouse as WarehouseIcon, ArrowLeftRight, Sliders, ArrowDownToLine, ArrowUpFromLine, Settings2, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,243 +11,380 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { EmptyState } from "@/components/ui/empty-state"
 import { formatCurrency } from "@/lib/utils"
-import { createInventoryItem, updateInventoryItem, deleteInventoryItem } from "../actions"
+import {
+  createWarehouse, updateWarehouse, deleteWarehouse, setDefaultWarehouse,
+  addStockItem, removeStockItem, adjustStock, stockEntry, stockExit, transferStock,
+} from "../actions"
 
 const ACCENT = "#6B4A2F"
 const LOW = "#991B1B"
+const GREEN = "#166534"
 
-export type IngredientOption = { id: string; name: string; unit: string; category: string | null; current_price: number }
-export type InventoryItem = {
-  id: string
-  quantity: number
-  min_quantity: number
-  notes: string | null
-  updated_at: string
-  ingredients: { id: string; name: string; unit: string; category: string | null; current_price: number } | null
-}
+export type Warehouse = { id: string; name: string; location: string | null; is_default: boolean; is_active: boolean }
+export type StockRow = { id: string; warehouse_id: string; ingredient_id: string; quantity: number; min_quantity: number; ingredients: { name: string; unit: string; category: string | null; current_price: number } | null }
+export type IngredientOption = { id: string; name: string; unit: string; current_price: number }
+export type MovementRow = { id: string; warehouse_id: string; ingredient_id: string; type: string; quantity: number; unit_cost: number | null; reference: string | null; created_at: string; ingredients: { name: string; unit: string } | null }
 
-type Props = { items: InventoryItem[]; ingredients: IngredientOption[] }
+const MOVE_LABEL: Record<string, string> = { entrada: "Entrada", salida: "Salida", ajuste: "Ajuste", traspaso_entrada: "Traspaso (entra)", traspaso_salida: "Traspaso (sale)" }
+const fmtQty = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 1000) / 1000))
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
 
-export function InventoryClient({ items: initial, ingredients }: Props) {
-  const [items, setItems] = useState(initial)
-  const [query, setQuery] = useState("")
+export function InventoryClient({ warehouses, stock, ingredients, movements }: { warehouses: Warehouse[]; stock: StockRow[]; ingredients: IngredientOption[]; movements: MovementRow[] }) {
+  const router = useRouter()
+  const [whId, setWhId] = useState(warehouses.find((w) => w.is_default)?.id ?? warehouses[0]?.id ?? "")
+  const [view, setView] = useState<"existencias" | "kardex">("existencias")
+  const [busy, setBusy] = useState(false)
+
+  // dialogs
+  const [whManager, setWhManager] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
-  const [editing, setEditing] = useState<InventoryItem | null>(null)
-  const [deleting, setDeleting] = useState<InventoryItem | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [moveKind, setMoveKind] = useState<null | "entrada" | "salida">(null)
+  const [adjustRow, setAdjustRow] = useState<StockRow | null>(null)
+  const [transferRow, setTransferRow] = useState<StockRow | null>(null)
 
-  // form fields
-  const [ingredientId, setIngredientId] = useState("")
-  const [quantity, setQuantity] = useState("0")
-  const [minQuantity, setMinQuantity] = useState("0")
+  // form state
+  const [addIng, setAddIng] = useState(""); const [addMin, setAddMin] = useState("0")
+  const [moveIng, setMoveIng] = useState(""); const [moveQty, setMoveQty] = useState(""); const [moveCost, setMoveCost] = useState(""); const [moveRef, setMoveRef] = useState("")
+  const [adjustQty, setAdjustQty] = useState("")
+  const [transferTo, setTransferTo] = useState(""); const [transferQty, setTransferQty] = useState("")
 
-  const trackedIds = new Set(items.map((i) => i.ingredients?.id))
+  const wh = warehouses.find((w) => w.id === whId)
+  const whStock = useMemo(() => stock.filter((s) => s.warehouse_id === whId).sort((a, b) => (a.ingredients?.name ?? "").localeCompare(b.ingredients?.name ?? "")), [stock, whId])
+  const whMovements = useMemo(() => movements.filter((m) => m.warehouse_id === whId), [movements, whId])
+  const trackedIds = new Set(whStock.map((s) => s.ingredient_id))
   const available = ingredients.filter((i) => !trackedIds.has(i.id))
 
-  const isLow = (i: InventoryItem) => i.quantity <= i.min_quantity
-  const lowItems = items.filter(isLow)
+  const isLow = (s: StockRow) => s.quantity <= s.min_quantity
+  const lowItems = whStock.filter(isLow)
+  const totalValue = whStock.reduce((t, s) => t + s.quantity * (s.ingredients?.current_price ?? 0), 0)
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    const list = !q ? items : items.filter((i) =>
-      (i.ingredients?.name ?? "").toLowerCase().includes(q) || (i.ingredients?.category ?? "").toLowerCase().includes(q)
-    )
-    // bajo stock primero, luego por nombre
-    return [...list].sort((a, b) => (Number(isLow(b)) - Number(isLow(a))) || (a.ingredients?.name ?? "").localeCompare(b.ingredients?.name ?? ""))
-  }, [items, query])
-
-  function openAdd() {
-    setIngredientId(""); setQuantity("0"); setMinQuantity("0"); setAddOpen(true)
-  }
-  function openEdit(item: InventoryItem) {
-    setEditing(item); setQuantity(String(item.quantity)); setMinQuantity(String(item.min_quantity))
+  async function run(fn: () => Promise<{ error: string | null } | { data: unknown; error: string | null }>) {
+    setBusy(true)
+    const res = await fn()
+    setBusy(false)
+    if (res?.error) { toast.error(res.error); return false }
+    router.refresh()
+    return true
   }
 
-  async function submitAdd() {
-    setLoading(true)
-    const res = await createInventoryItem({
-      ingredient_id: ingredientId,
-      quantity: parseFloat(quantity) || 0,
-      min_quantity: parseFloat(minQuantity) || 0,
-    })
-    if (res.error || !res.data) { toast.error(res.error ?? "Error"); setLoading(false); return }
-    const ing = ingredients.find((i) => i.id === ingredientId) ?? null
-    setItems((prev) => [{ ...(res.data as unknown as InventoryItem), ingredients: ing }, ...prev])
-    toast.success("Insumo agregado al inventario")
-    setAddOpen(false); setLoading(false)
+  async function doAdd() {
+    if (!addIng) { toast.error("Selecciona un insumo"); return }
+    if (await run(() => addStockItem(whId, addIng, parseFloat(addMin) || 0))) { toast.success("Insumo agregado al almacén"); setAddOpen(false); setAddIng(""); setAddMin("0") }
+  }
+  async function doMove() {
+    if (!moveIng) { toast.error("Selecciona un insumo"); return }
+    const qty = parseFloat(moveQty)
+    const fn = moveKind === "entrada"
+      ? () => stockEntry(whId, moveIng, qty, moveCost ? parseFloat(moveCost) : null, moveRef || undefined)
+      : () => stockExit(whId, moveIng, qty, moveRef || undefined)
+    if (await run(fn)) { toast.success(moveKind === "entrada" ? "Entrada registrada" : "Salida registrada"); setMoveKind(null); setMoveIng(""); setMoveQty(""); setMoveCost(""); setMoveRef("") }
+  }
+  async function doAdjust() {
+    if (!adjustRow) return
+    if (await run(() => adjustStock(whId, adjustRow.ingredient_id, parseFloat(adjustQty) || 0))) { toast.success("Existencia ajustada"); setAdjustRow(null) }
+  }
+  async function doTransfer() {
+    if (!transferRow || !transferTo) { toast.error("Selecciona el almacén destino"); return }
+    if (await run(() => transferStock(whId, transferTo, transferRow.ingredient_id, parseFloat(transferQty) || 0))) { toast.success("Traspaso realizado"); setTransferRow(null); setTransferTo(""); setTransferQty("") }
   }
 
-  async function submitEdit() {
-    if (!editing) return
-    setLoading(true)
-    const res = await updateInventoryItem(editing.id, { quantity: parseFloat(quantity) || 0, min_quantity: parseFloat(minQuantity) || 0 })
-    if (res.error) { toast.error(res.error); setLoading(false); return }
-    setItems((prev) => prev.map((i) => i.id === editing.id ? { ...i, quantity: parseFloat(quantity) || 0, min_quantity: parseFloat(minQuantity) || 0 } : i))
-    toast.success("Existencias actualizadas")
-    setEditing(null); setLoading(false)
-  }
-
-  async function confirmDelete() {
-    if (!deleting) return
-    setLoading(true)
-    const res = await deleteInventoryItem(deleting.id)
-    if (res.error) { toast.error(res.error); setLoading(false); return }
-    setItems((prev) => prev.filter((i) => i.id !== deleting.id))
-    toast.success("Insumo retirado del inventario")
-    setDeleting(null); setLoading(false)
+  if (warehouses.length === 0) {
+    return <div className="enterprise-card p-10 text-center"><p className="text-sm font-sans text-muted-foreground">No hay almacenes.</p></div>
   }
 
   return (
-    <>
-      <div className="flex items-center gap-3 flex-wrap justify-between">
-        <div className="relative w-full sm:w-72">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar insumo…" className="pl-9 h-9 font-sans" />
-        </div>
-        <Button onClick={openAdd} disabled={available.length === 0} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
-          <Plus size={16} className="mr-1" /> Agregar insumo
+    <div className="space-y-5">
+      {/* Selector de almacén */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {warehouses.map((w) => {
+          const active = w.id === whId
+          return (
+            <button key={w.id} onClick={() => setWhId(w.id)}
+              className="px-3 py-1.5 rounded-full text-xs font-sans font-medium border transition-colors flex items-center gap-1.5"
+              style={active ? { background: ACCENT, color: "#fff", borderColor: ACCENT } : { background: "var(--card)", color: "var(--text-2)", borderColor: "var(--border-def, #EBEBEC)" }}>
+              <WarehouseIcon size={12} /> {w.name}{w.is_default ? " ·" : ""}{w.is_default && <Star size={10} style={{ fill: active ? "#fff" : ACCENT, color: active ? "#fff" : ACCENT }} />}
+            </button>
+          )
+        })}
+        <Button size="sm" variant="outline" className="h-7 text-xs font-sans gap-1" onClick={() => setWhManager(true)}>
+          <Settings2 size={13} /> Almacenes
         </Button>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="enterprise-card p-3.5" style={{ borderLeft: `3px solid ${ACCENT}` }}>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-3)" }}>Valor del inventario</p>
+          <p className="mono-data" style={{ fontSize: "1.35rem", fontWeight: 700, color: ACCENT, lineHeight: 1.15 }}>{formatCurrency(totalValue)}</p>
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.68rem", color: "var(--text-3)" }}>{wh?.name}{wh?.location ? ` · ${wh.location}` : ""}</p>
+        </div>
+        <div className="enterprise-card p-3.5">
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-3)" }}>Insumos</p>
+          <p className="mono-data" style={{ fontSize: "1.35rem", fontWeight: 700, color: "var(--text-1)", lineHeight: 1.15 }}>{whStock.length}</p>
+        </div>
+        <div className="enterprise-card p-3.5" style={lowItems.length > 0 ? { borderLeft: `3px solid ${LOW}` } : undefined}>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-3)" }}>Bajo mínimo</p>
+          <p className="mono-data" style={{ fontSize: "1.35rem", fontWeight: 700, color: lowItems.length > 0 ? LOW : "var(--text-1)", lineHeight: 1.15 }}>{lowItems.length}</p>
+        </div>
       </div>
 
       {lowItems.length > 0 && (
         <div className="rounded-lg border px-4 py-3 flex items-start gap-3" style={{ borderColor: `color-mix(in srgb, ${LOW} 30%, white)`, background: `color-mix(in srgb, ${LOW} 4%, white)` }}>
           <AlertTriangle size={16} className="shrink-0 mt-0.5" style={{ color: LOW }} />
           <div>
-            <p className="text-sm font-sans font-semibold" style={{ color: "var(--text-1)" }}>
-              {lowItems.length} insumo{lowItems.length !== 1 ? "s" : ""} en o por debajo del mínimo
-            </p>
-            <p className="text-xs font-sans" style={{ color: "var(--text-2)" }}>
-              {lowItems.map((i) => i.ingredients?.name).filter(Boolean).slice(0, 6).join(" · ")}
-            </p>
+            <p className="text-sm font-sans font-semibold" style={{ color: "var(--text-1)" }}>{lowItems.length} insumo{lowItems.length !== 1 ? "s" : ""} en o por debajo del mínimo</p>
+            <p className="text-xs font-sans" style={{ color: "var(--text-2)" }}>{lowItems.map((i) => i.ingredients?.name).filter(Boolean).slice(0, 8).join(" · ")}</p>
           </div>
         </div>
       )}
 
-      {items.length === 0 ? (
-        <EmptyState icon={Warehouse} title="Inventario vacío"
-          description="Agrega insumos de tu catálogo de ingredientes para llevar su existencia."
-          action={available.length > 0 ? { label: "Agregar insumo", onClick: openAdd } : undefined} />
-      ) : filtered.length === 0 ? (
-        <div className="enterprise-card py-12 text-center">
-          <p className="text-sm font-sans text-muted-foreground">Ningún insumo coincide con “{query}”.</p>
+      {/* Tabs + acciones */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-1 p-1 rounded-lg w-fit" style={{ background: "var(--surface-2, #F4F4F5)" }}>
+          {([["existencias", "Existencias"], ["kardex", "Movimientos"]] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setView(k)} className="px-3.5 py-1.5 rounded-md text-xs font-sans font-medium transition-colors"
+              style={view === k ? { background: "var(--card, #fff)", color: "var(--text-1)", boxShadow: "0 1px 2px rgb(0 0 0 / 0.06)" } : { color: "var(--text-3)" }}>{label}</button>
+          ))}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 stagger-children">
-          {filtered.map((item) => {
-            const low = isLow(item)
-            const ing = item.ingredients
-            return (
-              <div key={item.id} className="enterprise-card p-4 flex flex-col gap-3 group"
-                style={low ? { borderColor: `color-mix(in srgb, ${LOW} 30%, white)` } : undefined}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "1rem", fontWeight: 600, color: "var(--text-1)", lineHeight: 1.2 }} className="truncate">{ing?.name ?? "—"}</p>
-                    <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.7rem", color: "var(--text-3)" }} className="truncate">
-                      {ing?.category ?? "Sin categoría"} · {formatCurrency(ing?.current_price ?? 0)}/{ing?.unit}
-                    </p>
-                  </div>
-                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(item)}><Pencil size={14} /></Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(item)}><Trash2 size={14} /></Button>
-                  </div>
-                </div>
+        {view === "existencias" && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" variant="outline" className="h-8 text-xs font-sans gap-1" onClick={() => { setMoveKind("entrada"); setMoveIng(""); setMoveQty(""); setMoveCost(""); setMoveRef("") }}><ArrowDownToLine size={13} /> Entrada</Button>
+            <Button size="sm" variant="outline" className="h-8 text-xs font-sans gap-1" onClick={() => { setMoveKind("salida"); setMoveIng(""); setMoveQty(""); setMoveRef("") }}><ArrowUpFromLine size={13} /> Salida</Button>
+            <Button size="sm" className="h-8 text-xs bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans gap-1" onClick={() => { setAddOpen(true); setAddIng(""); setAddMin("0") }} disabled={available.length === 0}><Plus size={13} /> Agregar insumo</Button>
+          </div>
+        )}
+      </div>
 
-                <div className="mt-auto flex items-end justify-between pt-2" style={{ borderTop: "1px solid var(--border-def, #EBEBEC)" }}>
-                  <div>
-                    <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.5rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-3)" }}>Existencia</p>
-                    <p className="mono-data" style={{ fontSize: "1.3rem", fontWeight: 700, color: low ? LOW : ACCENT, lineHeight: 1.1 }}>
-                      {item.quantity}<span style={{ fontSize: "0.7rem", color: "var(--text-3)", fontWeight: 400 }}> {ing?.unit}</span>
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    {low ? (
-                      <span className="inline-flex items-center gap-1" style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: LOW }}>
-                        <AlertTriangle size={11} /> Bajo · mín {item.min_quantity}
-                      </span>
-                    ) : (
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", color: "var(--text-3)" }}>mín {item.min_quantity} {ing?.unit}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+      {/* Existencias */}
+      {view === "existencias" && (
+        whStock.length === 0 ? (
+          <EmptyState icon={WarehouseIcon} title="Almacén vacío"
+            description="Agrega insumos a este almacén o recibe una orden de compra para generar existencias."
+            action={available.length > 0 ? { label: "Agregar insumo", onClick: () => setAddOpen(true) } : undefined} />
+        ) : (
+          <div className="enterprise-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm font-sans min-w-[680px]">
+                <thead>
+                  <tr style={{ fontSize: "0.6rem" }} className="font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
+                    <th className="px-4 py-2 text-left">Insumo</th>
+                    <th className="px-3 py-2 text-right">Existencia</th>
+                    <th className="px-3 py-2 text-right">Mínimo</th>
+                    <th className="px-3 py-2 text-right">Valor</th>
+                    <th className="px-3 py-2 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {whStock.map((s) => {
+                    const low = isLow(s)
+                    const value = s.quantity * (s.ingredients?.current_price ?? 0)
+                    return (
+                      <tr key={s.id} className="border-t border-border table-row-hover" style={low ? { background: `color-mix(in srgb, ${LOW} 4%, white)` } : undefined}>
+                        <td className="px-4 py-2.5">
+                          <p style={{ fontWeight: 500, color: "var(--text-1)" }}>{s.ingredients?.name ?? "—"}</p>
+                          {s.ingredients?.category && <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.ingredients.category}</p>}
+                        </td>
+                        <td className="px-3 py-2.5 text-right mono-data" style={{ fontWeight: 600, color: low ? LOW : "var(--text-1)" }}>
+                          {fmtQty(s.quantity)} <span style={{ color: "var(--text-3)", fontWeight: 400 }}>{s.ingredients?.unit}</span>
+                          {low && <AlertTriangle size={11} style={{ color: LOW, display: "inline", marginLeft: 4 }} />}
+                        </td>
+                        <td className="px-3 py-2.5 text-right mono-data" style={{ color: "var(--text-3)" }}>{fmtQty(s.min_quantity)}</td>
+                        <td className="px-3 py-2.5 text-right mono-data" style={{ color: "var(--text-2)" }}>{formatCurrency(value)}</td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex justify-end gap-1">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Ajustar existencia" onClick={() => { setAdjustRow(s); setAdjustQty(String(s.quantity)) }}><Sliders size={13} /></Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Traspasar" disabled={warehouses.length < 2} onClick={() => { setTransferRow(s); setTransferTo(""); setTransferQty("") }}><ArrowLeftRight size={13} /></Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" title="Quitar del almacén" onClick={() => run(() => removeStockItem(s.id))}><Trash2 size={13} /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
       )}
 
-      {/* Agregar */}
+      {/* Kardex */}
+      {view === "kardex" && (
+        whMovements.length === 0 ? (
+          <div className="enterprise-card py-12 text-center"><p className="text-sm font-sans text-muted-foreground">Sin movimientos en este almacén.</p></div>
+        ) : (
+          <div className="enterprise-card overflow-hidden divide-y divide-border">
+            {whMovements.map((m) => {
+              const isIn = m.quantity >= 0
+              return (
+                <div key={m.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", color: "var(--text-3)", width: "5.5rem" }} className="shrink-0">{fmtDate(m.created_at)}</span>
+                  <span className="shrink-0" style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: isIn ? GREEN : LOW, width: "6.5rem" }}>{MOVE_LABEL[m.type] ?? m.type}</span>
+                  <span className="flex-1 min-w-0 truncate font-sans text-sm" style={{ color: "var(--text-1)" }}>{m.ingredients?.name ?? "—"}<span className="text-muted-foreground text-xs">{m.reference ? ` · ${m.reference}` : ""}</span></span>
+                  <span className="shrink-0 mono-data text-right" style={{ fontWeight: 700, color: isIn ? GREEN : LOW, width: "6rem" }}>{isIn ? "+" : ""}{fmtQty(m.quantity)} <span style={{ color: "var(--text-3)", fontWeight: 400 }}>{m.ingredients?.unit}</span></span>
+                </div>
+              )
+            })}
+          </div>
+        )
+      )}
+
+      {/* ── Diálogo: agregar insumo ── */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="font-heading">Agregar insumo al inventario</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-1">
+          <DialogHeader><DialogTitle className="font-heading">Agregar insumo a {wh?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-1">
             <div className="space-y-1.5">
               <Label className="font-sans text-sm">Insumo</Label>
-              <Select value={ingredientId} onValueChange={(v) => setIngredientId(v ?? "")}>
-                <SelectTrigger className="font-sans"><SelectValue placeholder="Selecciona un ingrediente" /></SelectTrigger>
-                <SelectContent>
-                  {available.map((i) => (
-                    <SelectItem key={i.id} value={i.id} className="font-sans">{i.name} <span className="text-muted-foreground">({i.unit})</span></SelectItem>
-                  ))}
-                </SelectContent>
+              <Select value={addIng} onValueChange={(v) => setAddIng(v ?? "")}>
+                <SelectTrigger className="font-sans"><SelectValue placeholder="Selecciona…" /></SelectTrigger>
+                <SelectContent>{available.map((i) => <SelectItem key={i.id} value={i.id} className="font-sans">{i.name} <span className="text-muted-foreground">({i.unit})</span></SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="font-sans text-sm">Existencia</Label>
-                <Input type="number" step="0.001" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="font-sans text-sm">Mínimo</Label>
-                <Input type="number" step="0.001" min="0" value={minQuantity} onChange={(e) => setMinQuantity(e.target.value)} />
-              </div>
+            <div className="space-y-1.5">
+              <Label className="font-sans text-sm">Mínimo</Label>
+              <Input type="number" step="0.001" min="0" value={addMin} onChange={(e) => setAddMin(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)} className="font-sans">Cancelar</Button>
-            <Button onClick={submitAdd} disabled={loading || !ingredientId} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
-              {loading ? "Guardando…" : "Agregar"}
-            </Button>
+            <Button onClick={doAdd} disabled={busy || !addIng} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">Agregar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Ajustar */}
-      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+      {/* ── Diálogo: entrada / salida ── */}
+      <Dialog open={!!moveKind} onOpenChange={(o) => !o && setMoveKind(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="font-heading">Ajustar existencias</DialogTitle></DialogHeader>
-          <p className="text-sm font-sans text-muted-foreground -mt-1">{editing?.ingredients?.name}</p>
-          <div className="grid grid-cols-2 gap-3 py-1">
+          <DialogHeader><DialogTitle className="font-heading">{moveKind === "entrada" ? "Registrar entrada" : "Registrar salida"} — {wh?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3 py-1">
             <div className="space-y-1.5">
-              <Label className="font-sans text-sm">Existencia ({editing?.ingredients?.unit})</Label>
-              <Input type="number" step="0.001" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+              <Label className="font-sans text-sm">Insumo</Label>
+              <Select value={moveIng} onValueChange={(v) => setMoveIng(v ?? "")}>
+                <SelectTrigger className="font-sans"><SelectValue placeholder="Selecciona…" /></SelectTrigger>
+                <SelectContent>{ingredients.map((i) => <SelectItem key={i.id} value={i.id} className="font-sans">{i.name} <span className="text-muted-foreground">({i.unit})</span></SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="font-sans text-sm">Cantidad (unidad base)</Label>
+                <Input type="number" step="0.001" min="0" value={moveQty} onChange={(e) => setMoveQty(e.target.value)} />
+              </div>
+              {moveKind === "entrada" && (
+                <div className="space-y-1.5">
+                  <Label className="font-sans text-sm">Costo unitario (opc.)</Label>
+                  <Input type="number" step="0.01" min="0" value={moveCost} onChange={(e) => setMoveCost(e.target.value)} placeholder="actual" />
+                </div>
+              )}
             </div>
             <div className="space-y-1.5">
-              <Label className="font-sans text-sm">Mínimo</Label>
-              <Input type="number" step="0.001" min="0" value={minQuantity} onChange={(e) => setMinQuantity(e.target.value)} />
+              <Label className="font-sans text-sm">Referencia / nota</Label>
+              <Input value={moveRef} onChange={(e) => setMoveRef(e.target.value)} placeholder="Compra directa, merma, etc." />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)} className="font-sans">Cancelar</Button>
-            <Button onClick={submitEdit} disabled={loading} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
-              {loading ? "Guardando…" : "Guardar"}
-            </Button>
+            <Button variant="outline" onClick={() => setMoveKind(null)} className="font-sans">Cancelar</Button>
+            <Button onClick={doMove} disabled={busy || !moveIng} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">Registrar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Eliminar */}
-      <Dialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+      {/* ── Diálogo: ajustar ── */}
+      <Dialog open={!!adjustRow} onOpenChange={(o) => !o && setAdjustRow(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="font-heading">Retirar del inventario</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground font-sans">
-            ¿Retirar <strong>{deleting?.ingredients?.name}</strong> del inventario? El ingrediente seguirá en tu catálogo.
-          </p>
+          <DialogHeader><DialogTitle className="font-heading">Ajustar existencia</DialogTitle></DialogHeader>
+          <p className="text-sm font-sans text-muted-foreground -mt-1">{adjustRow?.ingredients?.name} · actual {fmtQty(adjustRow?.quantity ?? 0)} {adjustRow?.ingredients?.unit}</p>
+          <div className="space-y-1.5 py-1">
+            <Label className="font-sans text-sm">Nueva existencia ({adjustRow?.ingredients?.unit})</Label>
+            <Input type="number" step="0.001" min="0" value={adjustQty} onChange={(e) => setAdjustQty(e.target.value)} />
+            <p className="text-[11px] font-sans text-muted-foreground">Se registrará un movimiento de ajuste por la diferencia.</p>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleting(null)} className="font-sans">Cancelar</Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={loading} className="font-sans">{loading ? "Retirando…" : "Retirar"}</Button>
+            <Button variant="outline" onClick={() => setAdjustRow(null)} className="font-sans">Cancelar</Button>
+            <Button onClick={doAdjust} disabled={busy} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">Ajustar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+
+      {/* ── Diálogo: traspaso ── */}
+      <Dialog open={!!transferRow} onOpenChange={(o) => !o && setTransferRow(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="font-heading">Traspasar entre almacenes</DialogTitle></DialogHeader>
+          <p className="text-sm font-sans text-muted-foreground -mt-1">{transferRow?.ingredients?.name} · disponible {fmtQty(transferRow?.quantity ?? 0)} {transferRow?.ingredients?.unit} en {wh?.name}</p>
+          <div className="space-y-3 py-1">
+            <div className="space-y-1.5">
+              <Label className="font-sans text-sm">Almacén destino</Label>
+              <Select value={transferTo} onValueChange={(v) => setTransferTo(v ?? "")}>
+                <SelectTrigger className="font-sans"><SelectValue placeholder="Selecciona…" /></SelectTrigger>
+                <SelectContent>{warehouses.filter((w) => w.id !== whId).map((w) => <SelectItem key={w.id} value={w.id} className="font-sans">{w.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-sans text-sm">Cantidad ({transferRow?.ingredients?.unit})</Label>
+              <Input type="number" step="0.001" min="0" value={transferQty} onChange={(e) => setTransferQty(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTransferRow(null)} className="font-sans">Cancelar</Button>
+            <Button onClick={doTransfer} disabled={busy || !transferTo} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">Traspasar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Diálogo: gestor de almacenes ── */}
+      <WarehouseManager open={whManager} onOpenChange={setWhManager} warehouses={warehouses} onChanged={() => router.refresh()} />
+    </div>
+  )
+}
+
+function WarehouseManager({ open, onOpenChange, warehouses, onChanged }: { open: boolean; onOpenChange: (o: boolean) => void; warehouses: Warehouse[]; onChanged: () => void }) {
+  const [name, setName] = useState(""); const [location, setLocation] = useState("")
+  const [editing, setEditing] = useState<Warehouse | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function wrap(fn: () => Promise<{ error: string | null } | { data: unknown; error: string | null }>) {
+    setBusy(true); const res = await fn(); setBusy(false)
+    if (res?.error) { toast.error(res.error); return false }
+    onChanged(); return true
+  }
+  async function save() {
+    if (!name.trim()) { toast.error("Nombre requerido"); return }
+    const ok = editing
+      ? await wrap(() => updateWarehouse(editing.id, { name, location, is_default: editing.is_default, is_active: editing.is_active }))
+      : await wrap(() => createWarehouse({ name, location }))
+    if (ok) { toast.success(editing ? "Almacén actualizado" : "Almacén creado"); setName(""); setLocation(""); setEditing(null) }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle className="font-heading">Almacenes</DialogTitle></DialogHeader>
+        <div className="rounded-md border border-border divide-y divide-border">
+          {warehouses.map((w) => (
+            <div key={w.id} className="flex items-center gap-2 px-3 py-2">
+              <button title={w.is_default ? "Predeterminado" : "Hacer predeterminado"} onClick={() => !w.is_default && wrap(() => setDefaultWarehouse(w.id)).then((ok) => ok && toast.success("Predeterminado actualizado"))}>
+                <Star size={14} style={{ color: w.is_default ? ACCENT : "var(--text-3)", fill: w.is_default ? ACCENT : "transparent" }} />
+              </button>
+              <div className="flex-1 min-w-0">
+                <p className="font-sans text-sm font-medium truncate" style={{ color: "var(--text-1)" }}>{w.name}</p>
+                {w.location && <p className="text-xs font-sans text-muted-foreground truncate">{w.location}</p>}
+              </div>
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(w); setName(w.name); setLocation(w.location ?? "") }}><Pencil size={13} /></Button>
+              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" disabled={w.is_default || warehouses.length < 2} onClick={() => wrap(() => deleteWarehouse(w.id)).then((ok) => ok && toast.success("Almacén eliminado"))}><Trash2 size={13} /></Button>
+            </div>
+          ))}
+        </div>
+        <div className="space-y-2 pt-1">
+          <p className="font-sans text-xs font-semibold text-muted-foreground uppercase tracking-wider">{editing ? "Editar almacén" : "Nuevo almacén"}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre (Bodega, Cocina…)" className="font-sans h-9" />
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Ubicación (opc.)" className="font-sans h-9" />
+          </div>
+          <div className="flex justify-end gap-2">
+            {editing && <Button size="sm" variant="outline" onClick={() => { setEditing(null); setName(""); setLocation("") }} className="font-sans">Cancelar edición</Button>}
+            <Button size="sm" onClick={save} disabled={busy} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans"><Plus size={13} className="mr-1" />{editing ? "Guardar" : "Crear almacén"}</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

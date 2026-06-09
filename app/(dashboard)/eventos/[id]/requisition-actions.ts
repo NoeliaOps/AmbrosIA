@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { purchaseFromBase } from "@/lib/units"
+import { postMovement, defaultWarehouseId } from "@/lib/inventory"
 
 async function getOrgId(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -281,12 +282,55 @@ export async function updatePOStatus(
   receivedAt?: string
 ) {
   const supabase = await createClient()
+  const orgId = await getOrgId(supabase)
+  if (!orgId) return { error: "No autenticado" }
+
+  // Estado previo para detectar la transición a/desde "recibida".
+  const { data: prev } = await supabase.from("purchase_orders").select("status").eq("id", id).maybeSingle()
+  const wasReceived = prev?.status === "recibida"
+
   const { error } = await supabase
     .from("purchase_orders")
     .update({ status, received_at: receivedAt ?? null })
     .eq("id", id)
   if (error) return { error: error.message }
+
+  // Conexión con inventario: recibir = entrada al almacén predeterminado
+  // (convirtiendo la presentación de compra a unidad base); revertir = salida.
+  const nowReceived = status === "recibida"
+  if (nowReceived !== wasReceived) {
+    const warehouseId = await defaultWarehouseId(supabase, orgId)
+    const { data: poItems } = await supabase
+      .from("purchase_order_items")
+      .select("ingredient_id, quantity, unit, unit_cost")
+      .eq("purchase_order_id", id)
+    const lineItems = poItems ?? []
+    if (warehouseId && lineItems.length > 0) {
+      const ids = [...new Set(lineItems.map((i) => i.ingredient_id))]
+      const { data: puRows } = await supabase.from("ingredient_purchase_units").select("ingredient_id, unit, factor").in("ingredient_id", ids)
+      const factorOf = (ingId: string, unit: string): number => {
+        const rows = (puRows ?? []).filter((r) => r.ingredient_id === ingId)
+        return rows.find((r) => r.unit === unit)?.factor ?? rows[0]?.factor ?? 1
+      }
+      for (const it of lineItems) {
+        const factor = factorOf(it.ingredient_id, it.unit)
+        const baseQty = it.quantity * factor
+        const baseCost = factor > 0 ? Math.round((it.unit_cost / factor) * 100) / 100 : it.unit_cost
+        await postMovement(supabase, orgId, {
+          warehouse_id: warehouseId,
+          ingredient_id: it.ingredient_id,
+          quantity: nowReceived ? Math.abs(baseQty) : -Math.abs(baseQty),
+          type: nowReceived ? "entrada" : "salida",
+          unit_cost: baseCost,
+          reference: nowReceived ? "Recepción de OC" : "Reversa de recepción de OC",
+          purchase_order_id: id,
+        })
+      }
+    }
+  }
+
   revalidatePath(`/eventos/${eventId}`)
   revalidatePath("/ordenes-compra")
+  revalidatePath("/inventario")
   return { error: null }
 }

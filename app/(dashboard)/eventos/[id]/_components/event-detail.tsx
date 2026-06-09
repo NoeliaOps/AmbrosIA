@@ -27,6 +27,7 @@ import { createMilestone, updateMilestone, markMilestonePaid, markMilestonePendi
 import { createCommission, updateCommission, setCommissionStatus, deleteCommission, type CommissionFormData } from "../commission-actions"
 import { addEventDish, updateEventDishServings, removeEventDish, applyMenuTemplate } from "../menu-actions"
 import { generateRequisition, updateRequisitionStatus, deleteRequisition, generatePurchaseOrders, updatePOStatus } from "../requisition-actions"
+import { consumeEvent } from "@/app/(dashboard)/inventario/actions"
 import { sendQuoteEmail, sendContractEmail } from "@/app/actions/send-email"
 import { ComprasTab } from "./compras-tab"
 import { PersonalTab } from "./personal-tab"
@@ -329,6 +330,7 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPOs)
   const [generatingReq, setGeneratingReq] = useState(false)
   const [generatingPOs, setGeneratingPOs] = useState(false)
+  const [consuming, setConsuming] = useState(false)
   const [expandedPO, setExpandedPO] = useState<string | null>(null)
 
   // payment state
@@ -755,6 +757,14 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
     setRequisition(null)
     setPurchaseOrders([])
     toast.success("Requisición eliminada")
+  }
+
+  async function handleConsumeInventory() {
+    setConsuming(true)
+    const { error } = await consumeEvent(event.id)
+    setConsuming(false)
+    if (error) { toast.error(error); return }
+    toast.success("Consumo descontado del almacén")
   }
 
   async function handleGeneratePOs() {
@@ -1614,6 +1624,16 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
                       {generatingPOs ? "Generando…" : "Generar órdenes de compra"}
                     </Button>
                   )}
+                  <Button
+                    size="sm" variant="outline"
+                    className="font-sans text-xs gap-1"
+                    onClick={handleConsumeInventory}
+                    disabled={consuming}
+                    title="Descuenta los insumos de esta requisición del almacén predeterminado"
+                  >
+                    <Package size={13} />
+                    {consuming ? "Descontando…" : "Descontar del almacén"}
+                  </Button>
                   <Button
                     size="sm" variant="ghost"
                     className="font-sans text-xs text-destructive hover:text-destructive"
