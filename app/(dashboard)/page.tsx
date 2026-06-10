@@ -8,8 +8,37 @@ import {
 } from "lucide-react"
 import { formatCurrency, formatShortDate } from "@/lib/utils"
 import { PageHeader } from "@/components/layout/page-header"
+import { DashboardPeriod, type PresetKey } from "./_components/dashboard-period"
+import { PeriodStats, type TypeStat, type MonthStat } from "./_components/period-stats"
 
 export const metadata: Metadata = { title: "Dashboard" }
+
+// Resuelve el rango de fechas del periodo seleccionado (preset o personalizado).
+function resolvePeriod(preset: string | undefined, from?: string, to?: string, ref: Date = new Date()) {
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
+  const y = ref.getFullYear()
+  const m = ref.getMonth()
+  const longMonth = (d: Date) => d.toLocaleDateString("es-MX", { month: "long", year: "numeric" })
+
+  if (preset === "custom" && from && to) {
+    const f = new Date(from + "T12:00:00"), t = new Date(to + "T12:00:00")
+    return { key: "custom" as const, start: from, end: to, label: `${f.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })} – ${t.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}` }
+  }
+  if (preset === "month") {
+    return { key: "month" as PresetKey, start: iso(new Date(y, m, 1)), end: iso(new Date(y, m + 1, 0)), label: longMonth(ref).replace(/^\w/, (c) => c.toUpperCase()) }
+  }
+  if (preset === "quarter") {
+    const q = Math.floor(m / 3)
+    const start = new Date(y, q * 3, 1), end = new Date(y, q * 3 + 3, 0)
+    return { key: "quarter" as PresetKey, start: iso(start), end: iso(end), label: `${q + 1}.º trimestre ${y}` }
+  }
+  if (preset === "12m") {
+    const start = new Date(ref.getTime() - 364 * 86400000)
+    return { key: "12m" as PresetKey, start: iso(start), end: iso(ref), label: "Últimos 12 meses" }
+  }
+  // default: este año
+  return { key: "year" as PresetKey, start: iso(new Date(y, 0, 1)), end: iso(new Date(y, 11, 31)), label: `Año ${y}` }
+}
 
 // Colores de etapa unificados con el pipeline de Eventos y el Calendario.
 const STATUS_CFG: Record<string, { label: string; color: string }> = {
@@ -20,10 +49,16 @@ const STATUS_CFG: Record<string, { label: string; color: string }> = {
   completado:     { label: "Completado",     color: "#2F6B4F" },
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ preset?: string; from?: string; to?: string }>
+}) {
+  const { preset, from, to } = await searchParams
   const supabase = await createClient()
   const now      = new Date()
   const today    = now.toISOString().slice(0, 10)
+  const period   = resolvePeriod(preset, from, to, now)
   const in7Days  = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10)
   const in30Days = new Date(now.getTime() + 30 * 86400000).toISOString().slice(0, 10)
   const monthStart    = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
@@ -39,6 +74,7 @@ export default async function DashboardPage() {
     { data: upcomingEvents },
     { data: profitData },
     { data: staleIngredients },
+    { data: periodEvents },
   ] = await Promise.all([
     supabase.from("events")
       .select("id, name, event_date, status, guest_count, clients(name)")
@@ -68,6 +104,10 @@ export default async function DashboardPage() {
       .lt("updated_at", thirtyDaysAgo)
       .order("updated_at")
       .limit(5),
+    supabase.from("events")
+      .select("id, event_type, event_date, status, guest_count, quotes(total, status, version_number)")
+      .gte("event_date", period.start).lte("event_date", period.end)
+      .neq("status", "cancelado").order("event_date"),
   ])
 
   const totalConfirmed = (confirmedQuotes ?? []).reduce((s, q) => s + q.total, 0)
@@ -100,6 +140,57 @@ export default async function DashboardPage() {
   ).length
   const thisMonthIds = new Set((activeEvents ?? []).map((e) => e.id))
   const upcoming     = (upcomingEvents ?? []).filter((e) => !thisMonthIds.has(e.id))
+
+  // ── Estadísticas del periodo ──────────────────────────────────────────────
+  type PeriodQuote = { total: number; status: string; version_number: number }
+  const eventRevenue = (quotes: PeriodQuote[] | null) => {
+    const sorted = [...(quotes ?? [])].sort((a, b) => b.version_number - a.version_number)
+    return sorted.find((q) => q.status === "aprobada")?.total ?? sorted[0]?.total ?? 0
+  }
+  const periodRows = (periodEvents ?? []).map((e) => ({
+    type: (e.event_type && e.event_type.trim()) ? e.event_type.trim() : "Sin tipo",
+    date: e.event_date as string,
+    guests: e.guest_count ?? 0,
+    occurred: (e.event_date as string) <= today,
+    revenue: eventRevenue(e.quotes as PeriodQuote[] | null),
+  }))
+
+  const eventsTotal   = periodRows.length
+  const occurredCount = periodRows.filter((r) => r.occurred).length
+  const guestsServed  = periodRows.filter((r) => r.occurred).reduce((s, r) => s + r.guests, 0)
+  const guestsBooked  = periodRows.filter((r) => !r.occurred).reduce((s, r) => s + r.guests, 0)
+  const periodRevenue = periodRows.reduce((s, r) => s + r.revenue, 0)
+
+  const typeMap = new Map<string, TypeStat>()
+  for (const r of periodRows) {
+    const cur = typeMap.get(r.type) ?? { type: r.type, count: 0, guests: 0, revenue: 0 }
+    cur.count += 1
+    cur.guests += r.guests
+    cur.revenue += r.revenue
+    typeMap.set(r.type, cur)
+  }
+  const byType: TypeStat[] = [...typeMap.values()].sort((a, b) => b.guests - a.guests)
+
+  // Distribución mensual de personas atendidas (solo eventos ya realizados).
+  const monthMap = new Map<string, MonthStat>()
+  const pStart = new Date(period.start + "T12:00:00")
+  const pEnd   = new Date(period.end + "T12:00:00")
+  // Sembrar todos los meses del rango (cap a 12 columnas para que la barra sea legible).
+  const monthsSpan = (pEnd.getFullYear() - pStart.getFullYear()) * 12 + (pEnd.getMonth() - pStart.getMonth()) + 1
+  if (monthsSpan <= 12) {
+    for (let i = 0; i < monthsSpan; i++) {
+      const d = new Date(pStart.getFullYear(), pStart.getMonth() + i, 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+      monthMap.set(key, { key, label: d.toLocaleDateString("es-MX", { month: "short" }), guests: 0, count: 0 })
+    }
+  }
+  for (const r of periodRows) {
+    if (!r.occurred) continue
+    const key = r.date.slice(0, 7)
+    const cur = monthMap.get(key)
+    if (cur) { cur.guests += r.guests; cur.count += 1 }
+  }
+  const byMonth: MonthStat[] = [...monthMap.values()]
 
   return (
     <div className="space-y-8 pb-8">
@@ -272,6 +363,27 @@ export default async function DashboardPage() {
             : `${(profitData ?? []).length} evento${(profitData ?? []).length !== 1 ? "s" : ""} completado${(profitData ?? []).length !== 1 ? "s" : ""}`}
           icon={avgMargin !== null && avgMargin >= 20 ? TrendingUp : BarChart3}
           accent={avgMargin === null ? "gold" : avgMargin >= 20 ? "emerald" : "red"}
+        />
+      </div>
+
+      {/* Estadísticas del periodo */}
+      <div className="animate-fade-up" style={{ animationDelay: "60ms" }}>
+        <PeriodStats
+          periodLabel={period.label}
+          eventsTotal={eventsTotal}
+          occurredCount={occurredCount}
+          guestsServed={guestsServed}
+          guestsBooked={guestsBooked}
+          revenue={periodRevenue}
+          byType={byType}
+          byMonth={byMonth}
+          selector={
+            <DashboardPeriod
+              activePreset={period.key}
+              from={period.key === "custom" ? period.start : ""}
+              to={period.key === "custom" ? period.end : ""}
+            />
+          }
         />
       </div>
 
