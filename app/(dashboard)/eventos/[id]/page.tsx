@@ -2,8 +2,8 @@ import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { EventDetail } from "./_components/event-detail"
 
-type TabKey = "resumen" | "menu" | "cotizacion" | "contrato" | "pagos" | "comisiones" | "requisicion" | "compras" | "personal"
-const VALID_TABS: TabKey[] = ["resumen", "menu", "cotizacion", "contrato", "pagos", "comisiones", "requisicion", "compras", "personal"]
+type TabKey = "resumen" | "menu" | "cotizacion" | "contrato" | "pagos" | "comisiones" | "degustaciones" | "requisicion" | "compras" | "personal"
+const VALID_TABS: TabKey[] = ["resumen", "menu", "cotizacion", "contrato", "pagos", "comisiones", "degustaciones", "requisicion", "compras", "personal"]
 
 type Props = {
   params: Promise<{ id: string }>
@@ -39,6 +39,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
     { data: staffAssignments },
     { data: staffMembers },
     { data: commissions },
+    { data: tastings },
     { data: eventDishes },
     { data: menuTemplates },
   ] = await Promise.all([
@@ -113,6 +114,11 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
       .eq("event_id", id)
       .order("created_at"),
     supabase
+      .from("event_tastings")
+      .select("id, tasting_date, attendees, cost, status, notes")
+      .eq("event_id", id)
+      .order("tasting_date"),
+    supabase
       .from("event_dishes")
       .select("id, dish_id, servings, sort_order")
       .eq("event_id", id)
@@ -141,6 +147,7 @@ export default async function EventDetailPage({ params, searchParams }: Props) {
       staffAssignments={(staffAssignments ?? []) as Parameters<typeof EventDetail>[0]["staffAssignments"]}
       staffMembers={(staffMembers ?? []) as Parameters<typeof EventDetail>[0]["staffMembers"]}
       commissions={(commissions ?? []) as Parameters<typeof EventDetail>[0]["commissions"]}
+      tastings={(tastings ?? []) as Parameters<typeof EventDetail>[0]["tastings"]}
       eventDishes={(eventDishes ?? []) as Parameters<typeof EventDetail>[0]["eventDishes"]}
       menuTemplates={(menuTemplates ?? []) as Parameters<typeof EventDetail>[0]["menuTemplates"]}
       initialTab={initialTab}

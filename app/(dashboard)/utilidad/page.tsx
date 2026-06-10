@@ -15,6 +15,7 @@ const C_INSUMOS = "#9A5B3F"   // arcilla
 const C_INDIRECT = "#6B4A2F"  // cacao
 const C_PERSONAL = "#4A5568"  // acero
 const C_COMM = "#7C3A6B"      // ciruela (comisiones)
+const C_TASTING = "#B8862B"   // mostaza (degustaciones)
 const C_OVERHEAD = "#3D5A80"  // azul pizarra (gastos generales prorrateados)
 const LOSS = "#991B1B"
 
@@ -54,7 +55,8 @@ export default async function UtilidadPage({
       actual_purchases(total_cost),
       event_indirect_costs(amount),
       event_staff_assignments(computed_cost),
-      event_commissions(amount)
+      event_commissions(amount),
+      event_tastings(cost, status)
     `, { count: "exact" })
     .neq("status", "cancelado")
     .order("event_date", { ascending: false })
@@ -87,6 +89,7 @@ export default async function UtilidadPage({
   type IndirectRow = { amount: number }
   type StaffRow = { computed_cost: number }
   type CommissionRow = { amount: number }
+  type TastingRow = { cost: number; status: string }
 
   const rows = (events ?? []).map((ev) => {
     const quotes = ev.quotes as QuoteRow[] | null
@@ -94,6 +97,7 @@ export default async function UtilidadPage({
     const indirects = ev.event_indirect_costs as IndirectRow[] | null
     const staffAssignments = ev.event_staff_assignments as StaffRow[] | null
     const commissionsRaw = ev.event_commissions as CommissionRow[] | null
+    const tastingsRaw = ev.event_tastings as TastingRow[] | null
 
     const sortedQuotes = [...(quotes ?? [])].sort((a, b) => b.version_number - a.version_number)
     const approvedQuote = sortedQuotes.find((q) => q.status === "aprobada")
@@ -102,11 +106,12 @@ export default async function UtilidadPage({
     const indirectCost = (indirects ?? []).reduce((s, i) => s + i.amount, 0)
     const staffCost = (staffAssignments ?? []).reduce((s, a) => s + a.computed_cost, 0)
     const commissionCost = (commissionsRaw ?? []).reduce((s, c) => s + c.amount, 0)
+    const tastingCost = (tastingsRaw ?? []).filter((t) => t.status !== "cancelada").reduce((s, t) => s + t.cost, 0)
     const overheadCost = overheadPerEvent((ev.event_date as string).slice(0, 7))
-    const profit = revenue - ingredientCost - indirectCost - staffCost - commissionCost - overheadCost
+    const profit = revenue - ingredientCost - indirectCost - staffCost - commissionCost - tastingCost - overheadCost
     const margin = revenue > 0 ? (profit / revenue) * 100 : null
 
-    return { ...ev, revenue, ingredientCost, indirectCost, staffCost, commissionCost, overheadCost, profit, margin }
+    return { ...ev, revenue, ingredientCost, indirectCost, staffCost, commissionCost, tastingCost, overheadCost, profit, margin }
   })
 
   const hasActuals = rows.some((r) => r.ingredientCost > 0)
@@ -116,8 +121,9 @@ export default async function UtilidadPage({
   const totalIndirect = rows.reduce((s, r) => s + r.indirectCost, 0)
   const totalStaff = rows.reduce((s, r) => s + r.staffCost, 0)
   const totalCommissions = rows.reduce((s, r) => s + r.commissionCost, 0)
+  const totalTastings = rows.reduce((s, r) => s + r.tastingCost, 0)
   const totalOverhead = rows.reduce((s, r) => s + r.overheadCost, 0)
-  const totalProfit = totalRevenue - totalIngredients - totalIndirect - totalStaff - totalCommissions - totalOverhead
+  const totalProfit = totalRevenue - totalIngredients - totalIndirect - totalStaff - totalCommissions - totalTastings - totalOverhead
   const totalMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : null
 
   // Anchura proporcional de cada segmento sobre los ingresos (para la barra)
@@ -172,6 +178,7 @@ export default async function UtilidadPage({
                     { v: totalIndirect, c: C_INDIRECT },
                     { v: totalStaff, c: C_PERSONAL },
                     { v: totalCommissions, c: C_COMM },
+                    { v: totalTastings, c: C_TASTING },
                     { v: totalOverhead, c: C_OVERHEAD },
                     { v: Math.max(0, totalProfit), c: ACCENT },
                   ].filter((s) => s.v > 0).map((s, i) => (
@@ -184,6 +191,7 @@ export default async function UtilidadPage({
                     { label: "Indirectos", v: totalIndirect, c: C_INDIRECT },
                     { label: "Personal", v: totalStaff, c: C_PERSONAL },
                     { label: "Comisiones", v: totalCommissions, c: C_COMM },
+                    { label: "Degustaciones", v: totalTastings, c: C_TASTING },
                     { label: "Gastos grales.", v: totalOverhead, c: C_OVERHEAD },
                     { label: totalProfit >= 0 ? "Utilidad" : "Pérdida", v: Math.abs(totalProfit), c: totalProfit >= 0 ? ACCENT : LOSS },
                   ].map((s) => (
@@ -204,6 +212,7 @@ export default async function UtilidadPage({
               <StatementLine label="Costos indirectos" amount={-totalIndirect} pct={pct(totalIndirect)} sign="minus" dim />
               <StatementLine label="Personal" amount={-totalStaff} pct={pct(totalStaff)} sign="minus" dim />
               <StatementLine label="Comisiones" amount={-totalCommissions} pct={pct(totalCommissions)} sign="minus" dim />
+              <StatementLine label="Degustaciones" amount={-totalTastings} pct={pct(totalTastings)} sign="minus" dim />
               <StatementLine label="Gastos generales (prorrateo)" amount={-totalOverhead} pct={pct(totalOverhead)} sign="minus" dim />
               <StatementLine label={totalProfit >= 0 ? "Utilidad" : "Pérdida"} amount={totalProfit} pct={totalMargin ?? 0} sign="equal" result resultColor={totalProfit >= 0 ? ACCENT : LOSS} />
             </div>
@@ -216,7 +225,7 @@ export default async function UtilidadPage({
               <span className="text-[11px] font-sans text-muted-foreground">{count} en total</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm font-sans min-w-[920px]">
+              <table className="w-full text-sm font-sans min-w-[1040px]">
                 <thead>
                   <tr style={{ fontSize: "0.65rem" }} className="font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                     <th className="px-4 py-2 text-left">Evento</th>
@@ -226,6 +235,7 @@ export default async function UtilidadPage({
                     <th className="px-3 py-2 text-right">Indirectos</th>
                     <th className="px-3 py-2 text-right">Personal</th>
                     <th className="px-3 py-2 text-right">Comisiones</th>
+                    <th className="px-3 py-2 text-right">Degustaciones</th>
                     <th className="px-3 py-2 text-right">Gastos grales.</th>
                     <th className="px-3 py-2 text-right">Utilidad</th>
                     <th className="px-3 py-2 text-right">Margen</th>
@@ -263,6 +273,9 @@ export default async function UtilidadPage({
                         </td>
                         <td className="px-3 py-3 text-right mono-data" style={{ color: ev.commissionCost > 0 ? C_COMM : "var(--text-3)" }}>
                           {ev.commissionCost > 0 ? formatCurrency(ev.commissionCost) : "—"}
+                        </td>
+                        <td className="px-3 py-3 text-right mono-data" style={{ color: ev.tastingCost > 0 ? C_TASTING : "var(--text-3)" }}>
+                          {ev.tastingCost > 0 ? formatCurrency(ev.tastingCost) : "—"}
                         </td>
                         <td className="px-3 py-3 text-right mono-data" style={{ color: ev.overheadCost > 0 ? C_OVERHEAD : "var(--text-3)" }}>
                           {ev.overheadCost > 0 ? formatCurrency(ev.overheadCost) : "—"}

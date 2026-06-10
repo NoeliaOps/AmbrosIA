@@ -19,7 +19,7 @@ async function currentPrice(supabase: SB, ingredientId: string) {
 }
 
 // ── Almacenes ─────────────────────────────────────────────────────────────────
-export async function createWarehouse(data: { name: string; location?: string; is_default?: boolean }) {
+export async function createWarehouse(data: { name: string; location?: string; type?: string; is_default?: boolean }) {
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)
   if (!orgId) return { data: null, error: "No autenticado" }
@@ -27,24 +27,24 @@ export async function createWarehouse(data: { name: string; location?: string; i
   if (data.is_default) await supabase.from("warehouses").update({ is_default: false }).eq("org_id", orgId).eq("is_default", true)
   const { data: row, error } = await supabase
     .from("warehouses")
-    .insert({ org_id: orgId, name: data.name.trim(), location: data.location || null, is_default: !!data.is_default })
-    .select("id, name, location, is_default, is_active")
+    .insert({ org_id: orgId, name: data.name.trim(), location: data.location || null, type: data.type || "ambiente", is_default: !!data.is_default })
+    .select("id, name, location, type, is_default, is_active")
     .single()
   if (error) return { data: null, error: error.message }
   revalidatePath("/inventario")
   return { data: row, error: null }
 }
 
-export async function updateWarehouse(id: string, data: { name: string; location?: string; is_default?: boolean; is_active?: boolean }) {
+export async function updateWarehouse(id: string, data: { name: string; location?: string; type?: string; is_default?: boolean; is_active?: boolean }) {
   const supabase = await createClient()
   const orgId = await getOrgId(supabase)
   if (!orgId) return { data: null, error: "No autenticado" }
   if (data.is_default) await supabase.from("warehouses").update({ is_default: false }).eq("org_id", orgId).eq("is_default", true)
   const { data: row, error } = await supabase
     .from("warehouses")
-    .update({ name: data.name.trim(), location: data.location ?? null, is_default: data.is_default, is_active: data.is_active })
+    .update({ name: data.name.trim(), location: data.location ?? null, type: data.type, is_default: data.is_default, is_active: data.is_active })
     .eq("id", id).eq("org_id", orgId)
-    .select("id, name, location, is_default, is_active")
+    .select("id, name, location, type, is_default, is_active")
     .single()
   if (error) return { data: null, error: error.message }
   revalidatePath("/inventario")

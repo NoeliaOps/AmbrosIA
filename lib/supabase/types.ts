@@ -561,6 +561,7 @@ export type Database = {
           name: string
           notes: string | null
           org_id: string
+          type: string
           updated_at: string
         }
         Insert: {
@@ -572,6 +573,7 @@ export type Database = {
           name: string
           notes?: string | null
           org_id: string
+          type?: string
           updated_at?: string
         }
         Update: {
@@ -583,6 +585,7 @@ export type Database = {
           name?: string
           notes?: string | null
           org_id?: string
+          type?: string
           updated_at?: string
         }
         Relationships: [
@@ -1548,6 +1551,60 @@ export type Database = {
           },
           {
             foreignKeyName: "event_commissions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_tastings: {
+        Row: {
+          attendees: number
+          cost: number
+          created_at: string
+          event_id: string
+          id: string
+          notes: string | null
+          org_id: string
+          status: string
+          tasting_date: string
+          updated_at: string
+        }
+        Insert: {
+          attendees?: number
+          cost?: number
+          created_at?: string
+          event_id: string
+          id?: string
+          notes?: string | null
+          org_id: string
+          status?: string
+          tasting_date?: string
+          updated_at?: string
+        }
+        Update: {
+          attendees?: number
+          cost?: number
+          created_at?: string
+          event_id?: string
+          id?: string
+          notes?: string | null
+          org_id?: string
+          status?: string
+          tasting_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_tastings_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_tastings_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"

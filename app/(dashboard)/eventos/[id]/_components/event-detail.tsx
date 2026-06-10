@@ -25,6 +25,7 @@ import { updateEvent, updateEventStatus, deleteEvent, createClient2 } from "../.
 import { upsertQuote, updateQuoteStatus, generateContract, updateContract } from "../quote-actions"
 import { createMilestone, updateMilestone, markMilestonePaid, markMilestonePending, deleteMilestone, generateDefaultPlan, type MilestoneFormData } from "../payment-actions"
 import { createCommission, updateCommission, setCommissionStatus, deleteCommission, type CommissionFormData } from "../commission-actions"
+import { createTasting, updateTasting, deleteTasting, type TastingFormData } from "../tasting-actions"
 import { addEventDish, updateEventDishServings, removeEventDish, applyMenuTemplate } from "../menu-actions"
 import { generateRequisition, updateRequisitionStatus, deleteRequisition, generatePurchaseOrders, updatePOStatus } from "../requisition-actions"
 import { consumeEvent } from "@/app/(dashboard)/inventario/actions"
@@ -94,6 +95,21 @@ type EventCommission = {
 }
 
 const COMMISSION_ROLES = ["Ventas", "Planner", "Lugar", "Otro"] as const
+
+type EventTasting = {
+  id: string
+  tasting_date: string
+  attendees: number
+  cost: number
+  status: string
+  notes: string | null
+}
+
+const TASTING_STATUS: Record<string, { label: string; className: string }> = {
+  programada: { label: "Programada", className: "pill-info" },
+  realizada: { label: "Realizada", className: "pill-active" },
+  cancelada: { label: "Cancelada", className: "pill-danger" },
+}
 
 type EventDishRow = { id: string; dish_id: string; servings: number; sort_order: number }
 type MenuOption = { id: string; name: string }
@@ -246,8 +262,8 @@ type EventIndirectCost = {
   indirect_cost_categories: IndirectCostCategory | null
 }
 
-type TabKey = "resumen" | "menu" | "cotizacion" | "contrato" | "pagos" | "comisiones" | "requisicion" | "compras" | "personal"
-const VALID_TABS: TabKey[] = ["resumen", "menu", "cotizacion", "contrato", "pagos", "comisiones", "requisicion", "compras", "personal"]
+type TabKey = "resumen" | "menu" | "cotizacion" | "contrato" | "pagos" | "comisiones" | "degustaciones" | "requisicion" | "compras" | "personal"
+const VALID_TABS: TabKey[] = ["resumen", "menu", "cotizacion", "contrato", "pagos", "comisiones", "degustaciones", "requisicion", "compras", "personal"]
 
 type Props = {
   event: Event
@@ -264,6 +280,7 @@ type Props = {
   staffAssignments: StaffAssignment[]
   staffMembers: StaffMemberCatalog[]
   commissions: EventCommission[]
+  tastings: EventTasting[]
   eventDishes: EventDishRow[]
   menuTemplates: MenuOption[]
   initialTab?: TabKey
@@ -291,7 +308,7 @@ function EmailButton({ action, id, label }: { action: "quote" | "contract"; id: 
   )
 }
 
-export function EventDetail({ event: initial, quote: initialQuote, contract: initialContract, dishes, clients: initialClients, payments: initialPayments, requisition: initialRequisition, purchaseOrders: initialPOs, actualPurchases, indirectCosts, indirectCostCategories, staffAssignments, staffMembers, commissions: initialCommissions, eventDishes: initialEventDishes, menuTemplates, initialTab }: Props) {
+export function EventDetail({ event: initial, quote: initialQuote, contract: initialContract, dishes, clients: initialClients, payments: initialPayments, requisition: initialRequisition, purchaseOrders: initialPOs, actualPurchases, indirectCosts, indirectCostCategories, staffAssignments, staffMembers, commissions: initialCommissions, tastings: initialTastings, eventDishes: initialEventDishes, menuTemplates, initialTab }: Props) {
   const router = useRouter()
   const [event, setEvent] = useState(initial)
   const [quote, setQuote] = useState(initialQuote)
@@ -356,6 +373,13 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
   const [editingComm, setEditingComm] = useState<EventCommission | null>(null)
   const [commForm, setCommForm] = useState<{ beneficiary: string; role: string; basis: "fixed" | "percentage"; percentage: string; amount: string }>({ beneficiary: "", role: "Ventas", basis: "fixed", percentage: "", amount: "" })
   const [savingComm, setSavingComm] = useState(false)
+
+  // tasting (degustación) state
+  const [tastings, setTastings] = useState<EventTasting[]>(initialTastings)
+  const [tastingOpen, setTastingOpen] = useState(false)
+  const [editingTasting, setEditingTasting] = useState<EventTasting | null>(null)
+  const [tastingForm, setTastingForm] = useState<{ tasting_date: string; attendees: string; cost: string; status: "programada" | "realizada" | "cancelada"; notes: string }>({ tasting_date: new Date().toISOString().slice(0, 10), attendees: "", cost: "", status: "programada", notes: "" })
+  const [savingTasting, setSavingTasting] = useState(false)
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<EditValues>({
     resolver: zodResolver(editSchema),
@@ -731,6 +755,57 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
     toast.success("Comisión eliminada")
   }
 
+  // ── tastings (degustaciones) ────────────────────────────────────────────────
+
+  function openNewTasting() {
+    setEditingTasting(null)
+    setTastingForm({ tasting_date: new Date().toISOString().slice(0, 10), attendees: "", cost: "", status: "programada", notes: "" })
+    setTastingOpen(true)
+  }
+  function openEditTasting(t: EventTasting) {
+    setEditingTasting(t)
+    setTastingForm({
+      tasting_date: t.tasting_date,
+      attendees: t.attendees ? String(t.attendees) : "",
+      cost: String(t.cost),
+      status: (t.status === "realizada" || t.status === "cancelada") ? t.status : "programada",
+      notes: t.notes ?? "",
+    })
+    setTastingOpen(true)
+  }
+
+  async function saveTasting() {
+    if (!tastingForm.tasting_date) { toast.error("Indica la fecha de la degustación"); return }
+    setSavingTasting(true)
+    const data: TastingFormData = {
+      tasting_date: tastingForm.tasting_date,
+      attendees: Number(tastingForm.attendees) || 0,
+      cost: Number(tastingForm.cost) || 0,
+      status: tastingForm.status,
+      notes: tastingForm.notes.trim() || undefined,
+    }
+    if (editingTasting) {
+      const { data: upd, error } = await updateTasting(editingTasting.id, event.id, data)
+      if (error) { toast.error(error); setSavingTasting(false); return }
+      setTastings((prev) => prev.map((t) => t.id === editingTasting.id ? { ...t, ...(upd as unknown as EventTasting) } : t))
+      toast.success("Degustación actualizada")
+    } else {
+      const { data: created, error } = await createTasting(event.id, data)
+      if (error) { toast.error(error); setSavingTasting(false); return }
+      setTastings((prev) => [...prev, created as unknown as EventTasting])
+      toast.success("Degustación agregada")
+    }
+    setTastingOpen(false)
+    setSavingTasting(false)
+  }
+
+  async function handleDeleteTasting(t: EventTasting) {
+    const { error } = await deleteTasting(t.id, event.id)
+    if (error) { toast.error(error); return }
+    setTastings((prev) => prev.filter((x) => x.id !== t.id))
+    toast.success("Degustación eliminada")
+  }
+
   // ── requisition ───────────────────────────────────────────────────────────
 
   async function handleGenerateRequisition() {
@@ -888,8 +963,8 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
       {/* Tabs */}
       <div className="border-b border-border">
         <div className="flex gap-0">
-          {(["resumen", "menu", "cotizacion", "contrato", "pagos", "comisiones", "requisicion", "compras", "personal"] as const).map((tab) => {
-            const label = tab === "menu" ? "Menú" : tab === "cotizacion" ? "Cotización" : tab === "contrato" ? "Contrato" : tab === "pagos" ? "Pagos" : tab === "comisiones" ? "Comisiones" : tab === "requisicion" ? "Requisición" : tab === "compras" ? "Compras" : tab === "personal" ? "Personal" : "Resumen"
+          {(["resumen", "menu", "cotizacion", "contrato", "pagos", "comisiones", "degustaciones", "requisicion", "compras", "personal"] as const).map((tab) => {
+            const label = tab === "menu" ? "Menú" : tab === "cotizacion" ? "Cotización" : tab === "contrato" ? "Contrato" : tab === "pagos" ? "Pagos" : tab === "comisiones" ? "Comisiones" : tab === "degustaciones" ? "Degustaciones" : tab === "requisicion" ? "Requisición" : tab === "compras" ? "Compras" : tab === "personal" ? "Personal" : "Resumen"
             const overdueCount = tab === "pagos" ? payments.filter((p) => computePaymentStatus(p) === "vencido").length : 0
             return (
               <button
@@ -1555,6 +1630,78 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
         )
       })()}
 
+      {/* Tab: Degustaciones */}
+      {activeTab === "degustaciones" && (() => {
+        const activas = tastings.filter((t) => t.status !== "cancelada")
+        const totalCost = activas.reduce((s, t) => s + t.cost, 0)
+        const realizadas = tastings.filter((t) => t.status === "realizada").length
+        return (
+          <div className="space-y-5">
+            <p className="text-sm font-sans text-muted-foreground">
+              Pruebas de menú al cliente antes de cerrar. Su costo (insumos y personal) se descuenta de la utilidad del evento. Las canceladas no cuentan.
+            </p>
+
+            {tastings.length > 0 && (
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Costo total", value: formatCurrency(totalCost) },
+                  { label: "Degustaciones", value: String(activas.length) },
+                  { label: "Realizadas", value: String(realizadas) },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-lg border border-border p-3 space-y-0.5">
+                    <p className="text-xs font-sans text-muted-foreground">{s.label}</p>
+                    <p className="text-lg font-heading font-bold tabular-nums">{s.value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {tastings.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border p-10 text-center space-y-3">
+                <p className="font-heading font-semibold">Sin degustaciones</p>
+                <p className="text-sm font-sans text-muted-foreground">Registra las pruebas de menú que se hicieron para este cliente y su costo.</p>
+                <Button onClick={openNewTasting} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
+                  <Plus size={14} className="mr-1" /> Agregar degustación
+                </Button>
+              </div>
+            ) : (
+              <div className="rounded-md border border-border overflow-hidden">
+                {tastings.map((t, i) => {
+                  const meta = TASTING_STATUS[t.status] ?? TASTING_STATUS.programada
+                  return (
+                    <div key={t.id} className={`flex items-center gap-3 px-4 py-3 ${i > 0 ? "border-t border-border" : ""}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{formatDate(t.tasting_date)}</p>
+                        <p className="text-xs font-sans text-muted-foreground">
+                          {t.attendees > 0 ? `${t.attendees} persona${t.attendees !== 1 ? "s" : ""}` : "Sin asistentes registrados"}
+                          {t.notes ? ` · ${t.notes}` : ""}
+                        </p>
+                      </div>
+                      <p className="font-medium tabular-nums text-sm shrink-0" style={{ color: t.status === "cancelada" ? "var(--text-3)" : undefined }}>
+                        {formatCurrency(t.cost)}
+                      </p>
+                      <Badge variant="secondary" className={`font-sans text-xs border shrink-0 ${meta.className}`}>
+                        {meta.label}
+                      </Badge>
+                      <div className="flex gap-1 shrink-0">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditTasting(t)}><Pencil size={12} /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteTasting(t)}><Trash2 size={12} /></Button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {tastings.length > 0 && (
+              <Button variant="outline" size="sm" className="font-sans" onClick={openNewTasting}>
+                <Plus size={14} className="mr-1" /> Agregar degustación
+              </Button>
+            )}
+          </div>
+        )
+      })()}
+
       {/* Tab: Requisición */}
       {activeTab === "requisicion" && (
         <div className="space-y-5">
@@ -1911,6 +2058,54 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
             <Button variant="outline" onClick={() => setCommOpen(false)} className="font-sans">Cancelar</Button>
             <Button onClick={saveCommission} disabled={savingComm} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
               {savingComm ? "Guardando…" : editingComm ? "Guardar" : "Agregar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tasting dialog */}
+      <Dialog open={tastingOpen} onOpenChange={setTastingOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-heading">{editingTasting ? "Editar degustación" : "Nueva degustación"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="font-sans">Fecha *</Label>
+                <Input type="date" value={tastingForm.tasting_date} onChange={(e) => setTastingForm((f) => ({ ...f, tasting_date: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="font-sans">Asistentes</Label>
+                <Input type="number" min="0" value={tastingForm.attendees} onChange={(e) => setTastingForm((f) => ({ ...f, attendees: e.target.value }))} placeholder="Ej. 4" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-sans">Costo (MXN) *</Label>
+              <Input type="number" step="0.01" min="0" value={tastingForm.cost} onChange={(e) => setTastingForm((f) => ({ ...f, cost: e.target.value }))} placeholder="0.00" />
+              <p className="text-[11px] font-sans text-muted-foreground">Insumos y personal de la prueba de menú.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-sans">Estado</Label>
+              <Select value={tastingForm.status} onValueChange={(v) => setTastingForm((f) => ({ ...f, status: (v as "programada" | "realizada" | "cancelada") ?? "programada" }))}>
+                <SelectTrigger className="font-sans"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="programada" className="font-sans">Programada</SelectItem>
+                  <SelectItem value="realizada" className="font-sans">Realizada</SelectItem>
+                  <SelectItem value="cancelada" className="font-sans">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] font-sans text-muted-foreground">Las canceladas no afectan la utilidad.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-sans">Notas</Label>
+              <Input value={tastingForm.notes} onChange={(e) => setTastingForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Platillos probados, observaciones…" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTastingOpen(false)} className="font-sans">Cancelar</Button>
+            <Button onClick={saveTasting} disabled={savingTasting} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
+              {savingTasting ? "Guardando…" : editingTasting ? "Guardar" : "Agregar"}
             </Button>
           </DialogFooter>
         </DialogContent>

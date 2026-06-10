@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, AlertTriangle, Warehouse as WarehouseIcon, ArrowLeftRight, Sliders, ArrowDownToLine, ArrowUpFromLine, Settings2, Star } from "lucide-react"
+import { Plus, Pencil, Trash2, AlertTriangle, Warehouse as WarehouseIcon, ArrowLeftRight, Sliders, ArrowDownToLine, ArrowUpFromLine, Settings2, Star, Snowflake } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,10 +17,18 @@ import {
 } from "../actions"
 
 const ACCENT = "#6B4A2F"
+const COLD = "#3D5A80" // azul pizarra para almacenes fríos
 const LOW = "#991B1B"
 const GREEN = "#166534"
 
-export type Warehouse = { id: string; name: string; location: string | null; is_default: boolean; is_active: boolean }
+export const WAREHOUSE_TYPES = [
+  { value: "ambiente", label: "Ambiente", cold: false },
+  { value: "refrigerado", label: "Refrigerado", cold: true },
+  { value: "congelado", label: "Congelado", cold: true },
+] as const
+function typeMeta(t: string) { return WAREHOUSE_TYPES.find((x) => x.value === t) ?? WAREHOUSE_TYPES[0] }
+
+export type Warehouse = { id: string; name: string; location: string | null; type: string; is_default: boolean; is_active: boolean }
 export type StockRow = { id: string; warehouse_id: string; ingredient_id: string; quantity: number; min_quantity: number; ingredients: { name: string; unit: string; category: string | null; current_price: number } | null }
 export type IngredientOption = { id: string; name: string; unit: string; current_price: number }
 export type MovementRow = { id: string; warehouse_id: string; ingredient_id: string; type: string; quantity: number; unit_cost: number | null; reference: string | null; created_at: string; ingredients: { name: string; unit: string } | null }
@@ -49,6 +57,8 @@ export function InventoryClient({ warehouses, stock, ingredients, movements }: {
   const [transferTo, setTransferTo] = useState(""); const [transferQty, setTransferQty] = useState("")
 
   const wh = warehouses.find((w) => w.id === whId)
+  const selCold = typeMeta(wh?.type ?? "ambiente").cold
+  const whAccent = selCold ? COLD : ACCENT
   const whStock = useMemo(() => stock.filter((s) => s.warehouse_id === whId).sort((a, b) => (a.ingredients?.name ?? "").localeCompare(b.ingredients?.name ?? "")), [stock, whId])
   const whMovements = useMemo(() => movements.filter((m) => m.warehouse_id === whId), [movements, whId])
   const trackedIds = new Set(whStock.map((s) => s.ingredient_id))
@@ -98,11 +108,17 @@ export function InventoryClient({ warehouses, stock, ingredients, movements }: {
       <div className="flex items-center gap-2 flex-wrap">
         {warehouses.map((w) => {
           const active = w.id === whId
+          const cold = typeMeta(w.type).cold
+          const a = cold ? COLD : ACCENT
+          const Icon = cold ? Snowflake : WarehouseIcon
           return (
             <button key={w.id} onClick={() => setWhId(w.id)}
               className="px-3 py-1.5 rounded-full text-xs font-sans font-medium border transition-colors flex items-center gap-1.5"
-              style={active ? { background: ACCENT, color: "#fff", borderColor: ACCENT } : { background: "var(--card)", color: "var(--text-2)", borderColor: "var(--border-def, #EBEBEC)" }}>
-              <WarehouseIcon size={12} /> {w.name}{w.is_default ? " ·" : ""}{w.is_default && <Star size={10} style={{ fill: active ? "#fff" : ACCENT, color: active ? "#fff" : ACCENT }} />}
+              style={active
+                ? { background: a, color: "#fff", borderColor: a }
+                : { background: "var(--card)", color: "var(--text-2)", borderColor: cold ? `color-mix(in srgb, ${COLD} 35%, white)` : "var(--border-def, #EBEBEC)" }}>
+              <Icon size={12} style={!active && cold ? { color: COLD } : undefined} /> {w.name}
+              {w.is_default && <Star size={10} style={{ fill: active ? "#fff" : a, color: active ? "#fff" : a }} />}
             </button>
           )
         })}
@@ -113,10 +129,13 @@ export function InventoryClient({ warehouses, stock, ingredients, movements }: {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <div className="enterprise-card p-3.5" style={{ borderLeft: `3px solid ${ACCENT}` }}>
+        <div className="enterprise-card p-3.5" style={{ borderLeft: `3px solid ${whAccent}` }}>
           <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-3)" }}>Valor del inventario</p>
-          <p className="mono-data" style={{ fontSize: "1.35rem", fontWeight: 700, color: ACCENT, lineHeight: 1.15 }}>{formatCurrency(totalValue)}</p>
-          <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.68rem", color: "var(--text-3)" }}>{wh?.name}{wh?.location ? ` · ${wh.location}` : ""}</p>
+          <p className="mono-data" style={{ fontSize: "1.35rem", fontWeight: 700, color: whAccent, lineHeight: 1.15 }}>{formatCurrency(totalValue)}</p>
+          <p className="flex items-center gap-1" style={{ fontFamily: "var(--font-sans)", fontSize: "0.68rem", color: "var(--text-3)" }}>
+            {selCold && <Snowflake size={10} style={{ color: COLD }} />}
+            {typeMeta(wh?.type ?? "ambiente").label}{wh?.location ? ` · ${wh.location}` : ""}
+          </p>
         </div>
         <div className="enterprise-card p-3.5">
           <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-3)" }}>Insumos</p>
@@ -337,9 +356,11 @@ export function InventoryClient({ warehouses, stock, ingredients, movements }: {
 }
 
 function WarehouseManager({ open, onOpenChange, warehouses, onChanged }: { open: boolean; onOpenChange: (o: boolean) => void; warehouses: Warehouse[]; onChanged: () => void }) {
-  const [name, setName] = useState(""); const [location, setLocation] = useState("")
+  const [name, setName] = useState(""); const [location, setLocation] = useState(""); const [type, setType] = useState("ambiente")
   const [editing, setEditing] = useState<Warehouse | null>(null)
   const [busy, setBusy] = useState(false)
+
+  function resetForm() { setName(""); setLocation(""); setType("ambiente"); setEditing(null) }
 
   async function wrap(fn: () => Promise<{ error: string | null } | { data: unknown; error: string | null }>) {
     setBusy(true); const res = await fn(); setBusy(false)
@@ -349,9 +370,9 @@ function WarehouseManager({ open, onOpenChange, warehouses, onChanged }: { open:
   async function save() {
     if (!name.trim()) { toast.error("Nombre requerido"); return }
     const ok = editing
-      ? await wrap(() => updateWarehouse(editing.id, { name, location, is_default: editing.is_default, is_active: editing.is_active }))
-      : await wrap(() => createWarehouse({ name, location }))
-    if (ok) { toast.success(editing ? "Almacén actualizado" : "Almacén creado"); setName(""); setLocation(""); setEditing(null) }
+      ? await wrap(() => updateWarehouse(editing.id, { name, location, type, is_default: editing.is_default, is_active: editing.is_active }))
+      : await wrap(() => createWarehouse({ name, location, type }))
+    if (ok) { toast.success(editing ? "Almacén actualizado" : "Almacén creado"); resetForm() }
   }
 
   return (
@@ -368,7 +389,12 @@ function WarehouseManager({ open, onOpenChange, warehouses, onChanged }: { open:
                 <p className="font-sans text-sm font-medium truncate" style={{ color: "var(--text-1)" }}>{w.name}</p>
                 {w.location && <p className="text-xs font-sans text-muted-foreground truncate">{w.location}</p>}
               </div>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(w); setName(w.name); setLocation(w.location ?? "") }}><Pencil size={13} /></Button>
+              {(() => { const m = typeMeta(w.type); return (
+                <span className="flex items-center gap-1 shrink-0" style={{ fontFamily: "var(--font-mono)", fontSize: "0.55rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: m.cold ? COLD : "var(--text-3)" }}>
+                  {m.cold && <Snowflake size={10} />}{m.label}
+                </span>
+              ) })()}
+              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(w); setName(w.name); setLocation(w.location ?? ""); setType(w.type) }}><Pencil size={13} /></Button>
               <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" disabled={w.is_default || warehouses.length < 2} onClick={() => wrap(() => deleteWarehouse(w.id)).then((ok) => ok && toast.success("Almacén eliminado"))}><Trash2 size={13} /></Button>
             </div>
           ))}
@@ -379,8 +405,19 @@ function WarehouseManager({ open, onOpenChange, warehouses, onChanged }: { open:
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre (Bodega, Cocina…)" className="font-sans h-9" />
             <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Ubicación (opc.)" className="font-sans h-9" />
           </div>
+          <div className="space-y-1.5">
+            <Label className="font-sans text-xs">Tipo de almacén</Label>
+            <Select value={type} onValueChange={(v) => setType(v ?? "ambiente")}>
+              <SelectTrigger className="font-sans h-9"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {WAREHOUSE_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value} className="font-sans">{t.cold ? "❄ " : ""}{t.label}{t.cold ? " (frío)" : " (no frío)"}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex justify-end gap-2">
-            {editing && <Button size="sm" variant="outline" onClick={() => { setEditing(null); setName(""); setLocation("") }} className="font-sans">Cancelar edición</Button>}
+            {editing && <Button size="sm" variant="outline" onClick={resetForm} className="font-sans">Cancelar edición</Button>}
             <Button size="sm" onClick={save} disabled={busy} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans"><Plus size={13} className="mr-1" />{editing ? "Guardar" : "Crear almacén"}</Button>
           </div>
         </div>
