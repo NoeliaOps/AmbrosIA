@@ -46,28 +46,31 @@ export const USER_ROLES = {
 
 export const EVENT_TYPES = [
   "Boda",
-  "Evento corporativo",
-  "Evento social",
-  "XV años",
+  "XV Años",
   "Bautizo",
   "Graduación",
+  "Evento corporativo",
+  "Evento social",
   "Otro",
 ] as const
 
-export const INGREDIENT_CATEGORIES = [
+// Taxonomía única de categorías de insumos/proveedores (mismo dominio: tipo de producto).
+// Usada tanto por el catálogo de ingredientes como por el de proveedores.
+export const FOOD_CATEGORIES = [
   "Carnes y aves",
-  "Mariscos y pescados",
-  "Verduras y hortalizas",
-  "Frutas",
+  "Pescados y mariscos",
+  "Frutas y verduras",
   "Lácteos y huevos",
-  "Granos y cereales",
+  "Abarrotes y secos",
   "Especias y condimentos",
-  "Aceites y grasas",
-  "Bebidas",
   "Panadería y repostería",
-  "Enlatados y conservas",
+  "Bebidas",
+  "Vinos y licores",
   "Otros",
 ] as const
+
+export const INGREDIENT_CATEGORIES = FOOD_CATEGORIES
+export const SUPPLIER_CATEGORIES = FOOD_CATEGORIES
 
 export const DISH_CATEGORIES = [
   "Entrada",
@@ -84,7 +87,7 @@ export const UNITS_OF_MEASURE = [
   "kg", "g", "lb", "oz",
   "l", "ml",
   "pza", "caja", "bolsa", "lata",
-  "manojo", "cabeza", "diente",
+  "manojo", "cabeza", "diente", "cono", "costal",
   "taza", "cucharada", "cucharadita",
 ] as const
 
@@ -92,8 +95,10 @@ export const STAFF_POSITIONS = [
   "Capitán",
   "Mesero",
   "Bartender",
-  "Chef",
+  "Chef ejecutivo",
+  "Sous chef",
   "Cocinero",
+  "Repostero",
   "Ayudante de cocina",
   "Coordinador",
   "Logística",

@@ -259,14 +259,14 @@ async function seed() {
   // ── suppliers ──────────────────────────────────────────────────────────────
   console.log("\n🏪  Suppliers")
   const { error: supErr } = await supabase.from("suppliers").insert([
-    { id: IDS.sup.carnes,    org_id: IDS.org, name: "La Central Carnes",        contact_name: "Ramón Gutiérrez", phone: "442-234-5678", email: "ventas@lacentralcarnes.mx",     category: "Carnes y embutidos",       notes: "Proveedor principal de carnes frescas y maduradas" },
-    { id: IDS.sup.verduras,  org_id: IDS.org, name: "Verduras del Campo",        contact_name: "Elena Sandoval",  phone: "442-345-6789", email: "elena@verdurasdecampo.com",     category: "Verduras y frutas",        notes: "Entrega lunes, miércoles y viernes" },
-    { id: IDS.sup.lacteos,   org_id: IDS.org, name: "Lácteos Querétaro",         contact_name: "Jorge Medina",    phone: "442-456-7890", email: "jorgemedina@lacteosqro.mx",     category: "Lácteos y quesos",         notes: "Productos artesanales de la región" },
+    { id: IDS.sup.carnes,    org_id: IDS.org, name: "La Central Carnes",        contact_name: "Ramón Gutiérrez", phone: "442-234-5678", email: "ventas@lacentralcarnes.mx",     category: "Carnes y aves",       notes: "Proveedor principal de carnes frescas y maduradas" },
+    { id: IDS.sup.verduras,  org_id: IDS.org, name: "Verduras del Campo",        contact_name: "Elena Sandoval",  phone: "442-345-6789", email: "elena@verdurasdecampo.com",     category: "Frutas y verduras",        notes: "Entrega lunes, miércoles y viernes" },
+    { id: IDS.sup.lacteos,   org_id: IDS.org, name: "Lácteos Querétaro",         contact_name: "Jorge Medina",    phone: "442-456-7890", email: "jorgemedina@lacteosqro.mx",     category: "Lácteos y huevos",         notes: "Productos artesanales de la región" },
     { id: IDS.sup.abarrotes, org_id: IDS.org, name: "Distribuidora Omega",       contact_name: "Petra Villegas",  phone: "442-567-8901", email: "petra@distribuidoraomega.com",   category: "Abarrotes y secos",        notes: "Mayorista, pedidos mínimo $2,000" },
-    { id: IDS.sup.mariscos,  org_id: IDS.org, name: "Mariscos Frescos del Mar",  contact_name: "Felipe Olvera",   phone: "442-678-9012", email: "felipeolvera@mariscosfrescos.mx",category: "Mariscos y pescados",      notes: "Pedido con 48 hrs anticipación" },
+    { id: IDS.sup.mariscos,  org_id: IDS.org, name: "Mariscos Frescos del Mar",  contact_name: "Felipe Olvera",   phone: "442-678-9012", email: "felipeolvera@mariscosfrescos.mx",category: "Pescados y mariscos",      notes: "Pedido con 48 hrs anticipación" },
     { id: IDS.sup.vinos,     org_id: IDS.org, name: "Bodegas Terrón",            contact_name: "Lucía Terrón",    phone: "442-789-0123", email: "lucia@bodegasterron.mx",         category: "Vinos y licores",          notes: "Distribuidora oficial de varias marcas" },
     { id: IDS.sup.especias,  org_id: IDS.org, name: "Especias del Mundo",        contact_name: "Carlos Ríos",     phone: "442-890-1234", email: "carlosrios@especiasdelmundo.com", category: "Especias y condimentos",  notes: "Importador directo" },
-    { id: IDS.sup.panaderia, org_id: IDS.org, name: "Panadería San Miguel",      contact_name: "María de Luna",   phone: "442-901-2345", email: "mariadluna@panaderiasanmiguel.mx", category: "Panes y pasteles",      notes: "Pedidos con 3 días de anticipación" },
+    { id: IDS.sup.panaderia, org_id: IDS.org, name: "Panadería San Miguel",      contact_name: "María de Luna",   phone: "442-901-2345", email: "mariadluna@panaderiasanmiguel.mx", category: "Panadería y repostería",      notes: "Pedidos con 3 días de anticipación" },
   ])
   ok("8 proveedores", supErr)
 
@@ -274,73 +274,73 @@ async function seed() {
   console.log("\n🥩  Ingredients")
   const { error: ingErr } = await supabase.from("ingredients").insert([
     // Carnes
-    { id: IDS.ing.pollo,         org_id: IDS.org, name: "Pechuga de pollo",         unit: "kg",    category: "Carnes",     current_price: 92.00,  preferred_supplier_id: IDS.sup.carnes },
-    { id: IDS.ing.filete,        org_id: IDS.org, name: "Filete de res",             unit: "kg",    category: "Carnes",     current_price: 315.00, preferred_supplier_id: IDS.sup.carnes },
-    { id: IDS.ing.arrachera,     org_id: IDS.org, name: "Arrachera marinada",        unit: "kg",    category: "Carnes",     current_price: 262.00, preferred_supplier_id: IDS.sup.carnes },
-    { id: IDS.ing.lomo_cerdo,    org_id: IDS.org, name: "Lomo de cerdo",             unit: "kg",    category: "Carnes",     current_price: 158.00, preferred_supplier_id: IDS.sup.carnes },
-    { id: IDS.ing.camaron,       org_id: IDS.org, name: "Camarón U/15 limpio",       unit: "kg",    category: "Mariscos",   current_price: 379.00, preferred_supplier_id: IDS.sup.mariscos },
+    { id: IDS.ing.pollo,         org_id: IDS.org, name: "Pechuga de pollo",         unit: "kg",    category: "Carnes y aves",     current_price: 92.00,  preferred_supplier_id: IDS.sup.carnes },
+    { id: IDS.ing.filete,        org_id: IDS.org, name: "Filete de res",             unit: "kg",    category: "Carnes y aves",     current_price: 315.00, preferred_supplier_id: IDS.sup.carnes },
+    { id: IDS.ing.arrachera,     org_id: IDS.org, name: "Arrachera marinada",        unit: "kg",    category: "Carnes y aves",     current_price: 262.00, preferred_supplier_id: IDS.sup.carnes },
+    { id: IDS.ing.lomo_cerdo,    org_id: IDS.org, name: "Lomo de cerdo",             unit: "kg",    category: "Carnes y aves",     current_price: 158.00, preferred_supplier_id: IDS.sup.carnes },
+    { id: IDS.ing.camaron,       org_id: IDS.org, name: "Camarón U/15 limpio",       unit: "kg",    category: "Pescados y mariscos",   current_price: 379.00, preferred_supplier_id: IDS.sup.mariscos },
     // Verduras
-    { id: IDS.ing.jitomate,      org_id: IDS.org, name: "Jitomate guaje",            unit: "kg",    category: "Verduras",   current_price: 32.00,  preferred_supplier_id: IDS.sup.verduras },
-    { id: IDS.ing.cebolla,       org_id: IDS.org, name: "Cebolla blanca",            unit: "kg",    category: "Verduras",   current_price: 22.00,  preferred_supplier_id: IDS.sup.verduras },
-    { id: IDS.ing.ajo,           org_id: IDS.org, name: "Ajo pelado",                unit: "kg",    category: "Verduras",   current_price: 95.00,  preferred_supplier_id: IDS.sup.verduras },
-    { id: IDS.ing.chile_poblano, org_id: IDS.org, name: "Chile poblano",             unit: "kg",    category: "Verduras",   current_price: 52.00,  preferred_supplier_id: IDS.sup.verduras },
-    { id: IDS.ing.tomate_verde,  org_id: IDS.org, name: "Tomate verde (tomatillo)",  unit: "kg",    category: "Verduras",   current_price: 35.00,  preferred_supplier_id: IDS.sup.verduras },
-    { id: IDS.ing.champiñones,   org_id: IDS.org, name: "Champiñones frescos",       unit: "kg",    category: "Verduras",   current_price: 85.00,  preferred_supplier_id: IDS.sup.verduras },
-    { id: IDS.ing.aguacate,      org_id: IDS.org, name: "Aguacate Hass",             unit: "pza",   category: "Verduras",   current_price: 18.00,  preferred_supplier_id: IDS.sup.verduras },
-    { id: IDS.ing.limon,         org_id: IDS.org, name: "Limón persa",               unit: "kg",    category: "Verduras",   current_price: 28.00,  preferred_supplier_id: IDS.sup.verduras },
-    { id: IDS.ing.zanahoria,     org_id: IDS.org, name: "Zanahoria",                 unit: "kg",    category: "Verduras",   current_price: 25.00,  preferred_supplier_id: IDS.sup.verduras },
-    { id: IDS.ing.brocoli,       org_id: IDS.org, name: "Brócoli",                   unit: "kg",    category: "Verduras",   current_price: 42.00,  preferred_supplier_id: IDS.sup.verduras },
-    { id: IDS.ing.lechuga,       org_id: IDS.org, name: "Lechuga romana",            unit: "pza",   category: "Verduras",   current_price: 28.00,  preferred_supplier_id: IDS.sup.verduras },
-    { id: IDS.ing.cilantro,      org_id: IDS.org, name: "Cilantro fresco",           unit: "manojo",category: "Verduras",   current_price: 12.00,  preferred_supplier_id: IDS.sup.verduras },
-    { id: IDS.ing.perejil,       org_id: IDS.org, name: "Perejil liso",              unit: "manojo",category: "Verduras",   current_price: 10.00,  preferred_supplier_id: IDS.sup.verduras },
+    { id: IDS.ing.jitomate,      org_id: IDS.org, name: "Jitomate guaje",            unit: "kg",    category: "Frutas y verduras",   current_price: 32.00,  preferred_supplier_id: IDS.sup.verduras },
+    { id: IDS.ing.cebolla,       org_id: IDS.org, name: "Cebolla blanca",            unit: "kg",    category: "Frutas y verduras",   current_price: 22.00,  preferred_supplier_id: IDS.sup.verduras },
+    { id: IDS.ing.ajo,           org_id: IDS.org, name: "Ajo pelado",                unit: "kg",    category: "Frutas y verduras",   current_price: 95.00,  preferred_supplier_id: IDS.sup.verduras },
+    { id: IDS.ing.chile_poblano, org_id: IDS.org, name: "Chile poblano",             unit: "kg",    category: "Frutas y verduras",   current_price: 52.00,  preferred_supplier_id: IDS.sup.verduras },
+    { id: IDS.ing.tomate_verde,  org_id: IDS.org, name: "Tomate verde (tomatillo)",  unit: "kg",    category: "Frutas y verduras",   current_price: 35.00,  preferred_supplier_id: IDS.sup.verduras },
+    { id: IDS.ing.champiñones,   org_id: IDS.org, name: "Champiñones frescos",       unit: "kg",    category: "Frutas y verduras",   current_price: 85.00,  preferred_supplier_id: IDS.sup.verduras },
+    { id: IDS.ing.aguacate,      org_id: IDS.org, name: "Aguacate Hass",             unit: "pza",   category: "Frutas y verduras",   current_price: 18.00,  preferred_supplier_id: IDS.sup.verduras },
+    { id: IDS.ing.limon,         org_id: IDS.org, name: "Limón persa",               unit: "kg",    category: "Frutas y verduras",   current_price: 28.00,  preferred_supplier_id: IDS.sup.verduras },
+    { id: IDS.ing.zanahoria,     org_id: IDS.org, name: "Zanahoria",                 unit: "kg",    category: "Frutas y verduras",   current_price: 25.00,  preferred_supplier_id: IDS.sup.verduras },
+    { id: IDS.ing.brocoli,       org_id: IDS.org, name: "Brócoli",                   unit: "kg",    category: "Frutas y verduras",   current_price: 42.00,  preferred_supplier_id: IDS.sup.verduras },
+    { id: IDS.ing.lechuga,       org_id: IDS.org, name: "Lechuga romana",            unit: "pza",   category: "Frutas y verduras",   current_price: 28.00,  preferred_supplier_id: IDS.sup.verduras },
+    { id: IDS.ing.cilantro,      org_id: IDS.org, name: "Cilantro fresco",           unit: "manojo",category: "Frutas y verduras",   current_price: 12.00,  preferred_supplier_id: IDS.sup.verduras },
+    { id: IDS.ing.perejil,       org_id: IDS.org, name: "Perejil liso",              unit: "manojo",category: "Frutas y verduras",   current_price: 10.00,  preferred_supplier_id: IDS.sup.verduras },
     // Lácteos
-    { id: IDS.ing.crema,         org_id: IDS.org, name: "Crema ácida",               unit: "litro", category: "Lácteos",    current_price: 52.00,  preferred_supplier_id: IDS.sup.lacteos },
-    { id: IDS.ing.crema_batir,   org_id: IDS.org, name: "Crema para batir 35%",      unit: "litro", category: "Lácteos",    current_price: 78.00,  preferred_supplier_id: IDS.sup.lacteos },
-    { id: IDS.ing.queso_fresco,  org_id: IDS.org, name: "Queso fresco artesanal",    unit: "kg",    category: "Lácteos",    current_price: 98.00,  preferred_supplier_id: IDS.sup.lacteos },
-    { id: IDS.ing.mantequilla,   org_id: IDS.org, name: "Mantequilla sin sal",       unit: "kg",    category: "Lácteos",    current_price: 175.00, preferred_supplier_id: IDS.sup.lacteos },
-    { id: IDS.ing.leche,         org_id: IDS.org, name: "Leche entera",              unit: "litro", category: "Lácteos",    current_price: 28.00,  preferred_supplier_id: IDS.sup.lacteos },
-    { id: IDS.ing.huevo,         org_id: IDS.org, name: "Huevo blanco L",            unit: "pieza", category: "Lácteos",    current_price: 4.50,   preferred_supplier_id: IDS.sup.lacteos },
+    { id: IDS.ing.crema,         org_id: IDS.org, name: "Crema ácida",               unit: "l", category: "Lácteos y huevos",    current_price: 52.00,  preferred_supplier_id: IDS.sup.lacteos },
+    { id: IDS.ing.crema_batir,   org_id: IDS.org, name: "Crema para batir 35%",      unit: "l", category: "Lácteos y huevos",    current_price: 78.00,  preferred_supplier_id: IDS.sup.lacteos },
+    { id: IDS.ing.queso_fresco,  org_id: IDS.org, name: "Queso fresco artesanal",    unit: "kg",    category: "Lácteos y huevos",    current_price: 98.00,  preferred_supplier_id: IDS.sup.lacteos },
+    { id: IDS.ing.mantequilla,   org_id: IDS.org, name: "Mantequilla sin sal",       unit: "kg",    category: "Lácteos y huevos",    current_price: 175.00, preferred_supplier_id: IDS.sup.lacteos },
+    { id: IDS.ing.leche,         org_id: IDS.org, name: "Leche entera",              unit: "l", category: "Lácteos y huevos",    current_price: 28.00,  preferred_supplier_id: IDS.sup.lacteos },
+    { id: IDS.ing.huevo,         org_id: IDS.org, name: "Huevo blanco L",            unit: "pza", category: "Lácteos y huevos",    current_price: 4.50,   preferred_supplier_id: IDS.sup.lacteos },
     // Abarrotes
-    { id: IDS.ing.aceite_oliva,  org_id: IDS.org, name: "Aceite de oliva extra virgen", unit: "litro", category: "Abarrotes", current_price: 198.00, preferred_supplier_id: IDS.sup.abarrotes },
-    { id: IDS.ing.arroz,         org_id: IDS.org, name: "Arroz blanco de grano largo",  unit: "kg",    category: "Abarrotes", current_price: 32.00,  preferred_supplier_id: IDS.sup.abarrotes },
-    { id: IDS.ing.frijol,        org_id: IDS.org, name: "Frijol negro",               unit: "kg",    category: "Abarrotes", current_price: 38.00,  preferred_supplier_id: IDS.sup.abarrotes },
-    { id: IDS.ing.harina,        org_id: IDS.org, name: "Harina de trigo",            unit: "kg",    category: "Abarrotes", current_price: 22.00,  preferred_supplier_id: IDS.sup.abarrotes },
-    { id: IDS.ing.azucar,        org_id: IDS.org, name: "Azúcar blanca",              unit: "kg",    category: "Abarrotes", current_price: 26.00,  preferred_supplier_id: IDS.sup.abarrotes },
-    { id: IDS.ing.vino_blanco,   org_id: IDS.org, name: "Vino blanco seco para cocinar", unit: "litro", category: "Vinos",   current_price: 185.00, preferred_supplier_id: IDS.sup.vinos },
+    { id: IDS.ing.aceite_oliva,  org_id: IDS.org, name: "Aceite de oliva extra virgen", unit: "l", category: "Abarrotes y secos", current_price: 198.00, preferred_supplier_id: IDS.sup.abarrotes },
+    { id: IDS.ing.arroz,         org_id: IDS.org, name: "Arroz blanco de grano largo",  unit: "kg",    category: "Abarrotes y secos", current_price: 32.00,  preferred_supplier_id: IDS.sup.abarrotes },
+    { id: IDS.ing.frijol,        org_id: IDS.org, name: "Frijol negro",               unit: "kg",    category: "Abarrotes y secos", current_price: 38.00,  preferred_supplier_id: IDS.sup.abarrotes },
+    { id: IDS.ing.harina,        org_id: IDS.org, name: "Harina de trigo",            unit: "kg",    category: "Abarrotes y secos", current_price: 22.00,  preferred_supplier_id: IDS.sup.abarrotes },
+    { id: IDS.ing.azucar,        org_id: IDS.org, name: "Azúcar blanca",              unit: "kg",    category: "Abarrotes y secos", current_price: 26.00,  preferred_supplier_id: IDS.sup.abarrotes },
+    { id: IDS.ing.vino_blanco,   org_id: IDS.org, name: "Vino blanco seco para cocinar", unit: "l", category: "Vinos y licores",   current_price: 185.00, preferred_supplier_id: IDS.sup.vinos },
     // Especias
-    { id: IDS.ing.comino,        org_id: IDS.org, name: "Comino molido",              unit: "kg",    category: "Especias",   current_price: 420.00, preferred_supplier_id: IDS.sup.especias },
-    { id: IDS.ing.chile_ancho,   org_id: IDS.org, name: "Chile ancho seco",           unit: "kg",    category: "Especias",   current_price: 220.00, preferred_supplier_id: IDS.sup.especias },
+    { id: IDS.ing.comino,        org_id: IDS.org, name: "Comino molido",              unit: "kg",    category: "Especias y condimentos",   current_price: 420.00, preferred_supplier_id: IDS.sup.especias },
+    { id: IDS.ing.chile_ancho,   org_id: IDS.org, name: "Chile ancho seco",           unit: "kg",    category: "Especias y condimentos",   current_price: 220.00, preferred_supplier_id: IDS.sup.especias },
     // Panadería
-    { id: IDS.ing.pan_baguette,  org_id: IDS.org, name: "Baguette artesanal",         unit: "pieza", category: "Panadería",  current_price: 35.00,  preferred_supplier_id: IDS.sup.panaderia },
+    { id: IDS.ing.pan_baguette,  org_id: IDS.org, name: "Baguette artesanal",         unit: "pza", category: "Panadería y repostería",  current_price: 35.00,  preferred_supplier_id: IDS.sup.panaderia },
     // Postres
-    { id: IDS.ing.cajeta,        org_id: IDS.org, name: "Cajeta queretana",            unit: "kg",    category: "Abarrotes", current_price: 145.00, preferred_supplier_id: IDS.sup.abarrotes },
-    { id: IDS.ing.chocolate,     org_id: IDS.org, name: "Chocolate oscuro 70%",        unit: "kg",    category: "Abarrotes", current_price: 380.00, preferred_supplier_id: IDS.sup.abarrotes },
+    { id: IDS.ing.cajeta,        org_id: IDS.org, name: "Cajeta queretana",            unit: "kg",    category: "Abarrotes y secos", current_price: 145.00, preferred_supplier_id: IDS.sup.abarrotes },
+    { id: IDS.ing.chocolate,     org_id: IDS.org, name: "Chocolate oscuro 70%",        unit: "kg",    category: "Abarrotes y secos", current_price: 380.00, preferred_supplier_id: IDS.sup.abarrotes },
   ])
   ok("35 ingredientes", ingErr)
 
   // ── dishes ─────────────────────────────────────────────────────────────────
   console.log("\n🍽  Dishes")
   const { error: dishErr } = await supabase.from("dishes").insert([
-    { id: IDS.dish.crema_poblano,     org_id: IDS.org, name: "Crema de Poblano",              category: "Sopas y Cremas",     servings_yield: 1, notes: "Servir caliente con queso fresco y crema" },
-    { id: IDS.dish.ensalada_cesar,    org_id: IDS.org, name: "Ensalada César Clásica",        category: "Ensaladas",          servings_yield: 1, notes: "Aderezo casero, sin anchoas" },
-    { id: IDS.dish.pollo_salsa_verde, org_id: IDS.org, name: "Pollo en Salsa Verde",          category: "Platillos Principales", servings_yield: 1, notes: "Salsa de tomatillo verde con chile serrano" },
-    { id: IDS.dish.mole_pollo,        org_id: IDS.org, name: "Mole Queretano con Pollo",      category: "Platillos Principales", servings_yield: 1, notes: "Receta tradicional de la región, 24 ingredientes" },
-    { id: IDS.dish.pollo_crema,       org_id: IDS.org, name: "Pollo a la Crema con Poblano",  category: "Platillos Principales", servings_yield: 1, notes: "Pechuga de pollo en salsa de crema y chile poblano" },
-    { id: IDS.dish.filete_vino,       org_id: IDS.org, name: "Filete al Vino Tinto",          category: "Platillos Principales", servings_yield: 1, notes: "Filete de res con reducción de vino y champiñones" },
-    { id: IDS.dish.arrachera,         org_id: IDS.org, name: "Arrachera a las Brasas",        category: "Platillos Principales", servings_yield: 1, notes: "Marinada 24 hrs, servir con guacamole" },
-    { id: IDS.dish.lomo_ciruela,      org_id: IDS.org, name: "Lomo de Cerdo en Salsa de Ciruela", category: "Platillos Principales", servings_yield: 1, notes: "Con guarnición de puré de papa" },
-    { id: IDS.dish.camaron_ajo,       org_id: IDS.org, name: "Camarones al Mojo de Ajo",      category: "Platillos Principales", servings_yield: 1, notes: "Camarón U/15 con mantequilla y ajo" },
-    { id: IDS.dish.arroz_rojo,        org_id: IDS.org, name: "Arroz Rojo a la Mexicana",      category: "Guarniciones",       servings_yield: 1, notes: "Con verduras y jitomate" },
-    { id: IDS.dish.frijoles_olla,     org_id: IDS.org, name: "Frijoles de la Olla",           category: "Guarniciones",       servings_yield: 1, notes: "Frijol negro con epazote" },
-    { id: IDS.dish.verduras_vapor,    org_id: IDS.org, name: "Verduras al Vapor",             category: "Guarniciones",       servings_yield: 1, notes: "Mix brócoli, zanahoria y ejotes" },
-    { id: IDS.dish.flan_cajeta,       org_id: IDS.org, name: "Flan de Cajeta Queretana",      category: "Postres",            servings_yield: 1, notes: "Postre icónico de Querétaro" },
-    { id: IDS.dish.tres_leches,       org_id: IDS.org, name: "Tres Leches Artesanal",         category: "Postres",            servings_yield: 1, notes: "Esponja bañada en tres lácteos" },
-    { id: IDS.dish.mousse_chocolate,  org_id: IDS.org, name: "Mousse de Chocolate Oscuro",    category: "Postres",            servings_yield: 1, notes: "Chocolate 70%, crema batida" },
-    { id: IDS.dish.guacamole,         org_id: IDS.org, name: "Guacamole Artesanal",           category: "Entradas",           servings_yield: 1, notes: "Aguacate, cilantro, limón y chile serrano" },
-    { id: IDS.dish.caldo_res,         org_id: IDS.org, name: "Caldo de Res Queretano",        category: "Sopas y Cremas",     servings_yield: 1, notes: "Nutritivo caldo con verduras de temporada" },
-    { id: IDS.dish.carnitas,          org_id: IDS.org, name: "Carnitas Queretanas",            category: "Platillos Principales", servings_yield: 1, notes: "Cerdo confitado, servir con tortillas" },
-    { id: IDS.dish.ceviche_camaron,   org_id: IDS.org, name: "Ceviche de Camarón",            category: "Entradas",           servings_yield: 1, notes: "Camarón, limón, jitomate, aguacate y cilantro" },
-    { id: IDS.dish.pan_ajo,           org_id: IDS.org, name: "Pan al Ajo con Mantequilla",    category: "Entradas",           servings_yield: 1, notes: "Baguette artesanal tostado" },
+    { id: IDS.dish.crema_poblano,     org_id: IDS.org, name: "Crema de Poblano",              category: "Sopa",     servings_yield: 1, notes: "Servir caliente con queso fresco y crema" },
+    { id: IDS.dish.ensalada_cesar,    org_id: IDS.org, name: "Ensalada César Clásica",        category: "Ensalada",          servings_yield: 1, notes: "Aderezo casero, sin anchoas" },
+    { id: IDS.dish.pollo_salsa_verde, org_id: IDS.org, name: "Pollo en Salsa Verde",          category: "Plato principal", servings_yield: 1, notes: "Salsa de tomatillo verde con chile serrano" },
+    { id: IDS.dish.mole_pollo,        org_id: IDS.org, name: "Mole Queretano con Pollo",      category: "Plato principal", servings_yield: 1, notes: "Receta tradicional de la región, 24 ingredientes" },
+    { id: IDS.dish.pollo_crema,       org_id: IDS.org, name: "Pollo a la Crema con Poblano",  category: "Plato principal", servings_yield: 1, notes: "Pechuga de pollo en salsa de crema y chile poblano" },
+    { id: IDS.dish.filete_vino,       org_id: IDS.org, name: "Filete al Vino Tinto",          category: "Plato principal", servings_yield: 1, notes: "Filete de res con reducción de vino y champiñones" },
+    { id: IDS.dish.arrachera,         org_id: IDS.org, name: "Arrachera a las Brasas",        category: "Plato principal", servings_yield: 1, notes: "Marinada 24 hrs, servir con guacamole" },
+    { id: IDS.dish.lomo_ciruela,      org_id: IDS.org, name: "Lomo de Cerdo en Salsa de Ciruela", category: "Plato principal", servings_yield: 1, notes: "Con guarnición de puré de papa" },
+    { id: IDS.dish.camaron_ajo,       org_id: IDS.org, name: "Camarones al Mojo de Ajo",      category: "Plato principal", servings_yield: 1, notes: "Camarón U/15 con mantequilla y ajo" },
+    { id: IDS.dish.arroz_rojo,        org_id: IDS.org, name: "Arroz Rojo a la Mexicana",      category: "Guarnición",       servings_yield: 1, notes: "Con verduras y jitomate" },
+    { id: IDS.dish.frijoles_olla,     org_id: IDS.org, name: "Frijoles de la Olla",           category: "Guarnición",       servings_yield: 1, notes: "Frijol negro con epazote" },
+    { id: IDS.dish.verduras_vapor,    org_id: IDS.org, name: "Verduras al Vapor",             category: "Guarnición",       servings_yield: 1, notes: "Mix brócoli, zanahoria y ejotes" },
+    { id: IDS.dish.flan_cajeta,       org_id: IDS.org, name: "Flan de Cajeta Queretana",      category: "Postre",            servings_yield: 1, notes: "Postre icónico de Querétaro" },
+    { id: IDS.dish.tres_leches,       org_id: IDS.org, name: "Tres Leches Artesanal",         category: "Postre",            servings_yield: 1, notes: "Esponja bañada en tres lácteos" },
+    { id: IDS.dish.mousse_chocolate,  org_id: IDS.org, name: "Mousse de Chocolate Oscuro",    category: "Postre",            servings_yield: 1, notes: "Chocolate 70%, crema batida" },
+    { id: IDS.dish.guacamole,         org_id: IDS.org, name: "Guacamole Artesanal",           category: "Entrada",           servings_yield: 1, notes: "Aguacate, cilantro, limón y chile serrano" },
+    { id: IDS.dish.caldo_res,         org_id: IDS.org, name: "Caldo de Res Queretano",        category: "Sopa",     servings_yield: 1, notes: "Nutritivo caldo con verduras de temporada" },
+    { id: IDS.dish.carnitas,          org_id: IDS.org, name: "Carnitas Queretanas",            category: "Plato principal", servings_yield: 1, notes: "Cerdo confitado, servir con tortillas" },
+    { id: IDS.dish.ceviche_camaron,   org_id: IDS.org, name: "Ceviche de Camarón",            category: "Entrada",           servings_yield: 1, notes: "Camarón, limón, jitomate, aguacate y cilantro" },
+    { id: IDS.dish.pan_ajo,           org_id: IDS.org, name: "Pan al Ajo con Mantequilla",    category: "Entrada",           servings_yield: 1, notes: "Baguette artesanal tostado" },
   ])
   ok("20 platillos", dishErr)
 
@@ -476,18 +476,18 @@ async function seed() {
   // ── staff ──────────────────────────────────────────────────────────────────
   console.log("\n👥  Staff members")
   const { error: staffErr } = await supabase.from("staff_members").insert([
-    { id: IDS.staff.roberto,  org_id: IDS.org, name: "Roberto García",    position: "Chef Ejecutivo",       rate: 1800.00, rate_type: "daily",  phone: "442-111-0001", notes: "15 años de experiencia, especialista en cocina mexicana contemporánea" },
-    { id: IDS.staff.ana,      org_id: IDS.org, name: "Ana Morales",       position: "Sous Chef",            rate: 1200.00, rate_type: "daily",  phone: "442-111-0002", notes: "Especialista en repostería y salsas" },
+    { id: IDS.staff.roberto,  org_id: IDS.org, name: "Roberto García",    position: "Chef ejecutivo",       rate: 1800.00, rate_type: "daily",  phone: "442-111-0001", notes: "15 años de experiencia, especialista en cocina mexicana contemporánea" },
+    { id: IDS.staff.ana,      org_id: IDS.org, name: "Ana Morales",       position: "Sous chef",            rate: 1200.00, rate_type: "daily",  phone: "442-111-0002", notes: "Especialista en repostería y salsas" },
     { id: IDS.staff.miguel,   org_id: IDS.org, name: "Miguel Torres",     position: "Cocinero",             rate:  800.00, rate_type: "daily",  phone: "442-111-0003" },
-    { id: IDS.staff.carmen,   org_id: IDS.org, name: "Carmen Ruiz",       position: "Cocinera",             rate:  800.00, rate_type: "daily",  phone: "442-111-0004", notes: "Especialista en carnes y cortes" },
+    { id: IDS.staff.carmen,   org_id: IDS.org, name: "Carmen Ruiz",       position: "Cocinero",             rate:  800.00, rate_type: "daily",  phone: "442-111-0004", notes: "Especialista en carnes y cortes" },
     { id: IDS.staff.luis,     org_id: IDS.org, name: "Luis Hernández",    position: "Mesero",               rate:  130.00, rate_type: "hourly", phone: "442-111-0005" },
-    { id: IDS.staff.sofia,    org_id: IDS.org, name: "Sofía Jiménez",     position: "Mesera",               rate:  130.00, rate_type: "hourly", phone: "442-111-0006" },
-    { id: IDS.staff.carlos,   org_id: IDS.org, name: "Carlos Vega",       position: "Capitán de Meseros",   rate:  950.00, rate_type: "daily",  phone: "442-111-0007", notes: "10 años de experiencia en eventos de lujo" },
+    { id: IDS.staff.sofia,    org_id: IDS.org, name: "Sofía Jiménez",     position: "Mesero",               rate:  130.00, rate_type: "hourly", phone: "442-111-0006" },
+    { id: IDS.staff.carlos,   org_id: IDS.org, name: "Carlos Vega",       position: "Capitán",   rate:  950.00, rate_type: "daily",  phone: "442-111-0007", notes: "10 años de experiencia en eventos de lujo" },
     { id: IDS.staff.patricia, org_id: IDS.org, name: "Patricia López",    position: "Bartender",            rate:  160.00, rate_type: "hourly", phone: "442-111-0008", notes: "Mixología clásica y coctelería de autor" },
     { id: IDS.staff.jose,     org_id: IDS.org, name: "José Ramírez",      position: "Mesero",               rate:  130.00, rate_type: "hourly", phone: "442-111-0009" },
-    { id: IDS.staff.diana,    org_id: IDS.org, name: "Diana Castro",      position: "Mesera",               rate:  130.00, rate_type: "hourly", phone: "442-111-0010" },
+    { id: IDS.staff.diana,    org_id: IDS.org, name: "Diana Castro",      position: "Mesero",               rate:  130.00, rate_type: "hourly", phone: "442-111-0010" },
     { id: IDS.staff.fernando, org_id: IDS.org, name: "Fernando Ríos",     position: "Logística",            rate:  600.00, rate_type: "event",  phone: "442-111-0011", notes: "Montaje, transporte y desmontaje de equipo" },
-    { id: IDS.staff.isabel,   org_id: IDS.org, name: "Isabel Méndez",     position: "Repostera",            rate:  900.00, rate_type: "daily",  phone: "442-111-0012", notes: "Pasteles de boda y postres artesanales" },
+    { id: IDS.staff.isabel,   org_id: IDS.org, name: "Isabel Méndez",     position: "Repostero",            rate:  900.00, rate_type: "daily",  phone: "442-111-0012", notes: "Pasteles de boda y postres artesanales" },
   ])
   ok("12 colaboradores", staffErr)
 
@@ -508,10 +508,10 @@ async function seed() {
   const { error: evErr } = await supabase.from("events").insert([
     { id: IDS.ev.boda_garcia,  org_id: IDS.org, client_id: IDS.client.garcia,  name: "Boda García-Martínez",              event_type: "Boda",              event_date: "2026-04-15", event_time: "14:00", location: "Hacienda Galindo, San Juan del Río",    guest_count: 180, status: "completado", notes: "Servicio completo: coctel, banquete, mesa de dulces y pastel" },
     { id: IDS.ev.xv_valentina, org_id: IDS.org, client_id: IDS.client.morales, name: "XV Años Valentina Morales",         event_type: "XV Años",           event_date: "2026-06-08", event_time: "19:00", location: "Salón Jardines de Querétaro, Qro.",      guest_count: 120, status: "contratado", notes: "Menú de 3 tiempos con barra de bebidas" },
-    { id: IDS.ev.corp_grupo,   org_id: IDS.org, client_id: IDS.client.grupo,   name: "Convención Anual Grupo Industrial", event_type: "Corporativo",       event_date: "2026-05-30", event_time: "13:00", location: "Hotel Courtyard Querétaro, Qro.",        guest_count: 80,  status: "en_compras", notes: "Comida de negocios con presentaciones" },
+    { id: IDS.ev.corp_grupo,   org_id: IDS.org, client_id: IDS.client.grupo,   name: "Convención Anual Grupo Industrial", event_type: "Evento corporativo",       event_date: "2026-05-30", event_time: "13:00", location: "Hotel Courtyard Querétaro, Qro.",        guest_count: 80,  status: "en_compras", notes: "Comida de negocios con presentaciones" },
     { id: IDS.ev.boda_lopez,   org_id: IDS.org, client_id: IDS.client.lopez,   name: "Boda López-Hernández",              event_type: "Boda",              event_date: "2026-06-20", event_time: "16:00", location: "Quinta El Nogal, Juriquilla, Qro.",      guest_count: 150, status: "en_requisicion", notes: "Servicio de coctel 2 hrs antes del banquete" },
-    { id: IDS.ev.grad_perez,   org_id: IDS.org, client_id: IDS.client.perez,   name: "Graduación Familia Pérez",          event_type: "Celebración",       event_date: "2026-07-05", event_time: "14:00", location: "Casa particular, Lomas de Querétaro",   guest_count: 60,  status: "cotizado", notes: "Menú informal, sin protocolo de mesas" },
-    { id: IDS.ev.cena_cemex,   org_id: IDS.org, client_id: IDS.client.cemex,   name: "Cena Aniversario CEMEX 50 años",    event_type: "Cena Corporativa",  event_date: "2026-07-15", event_time: "20:00", location: "Planta CEMEX, Huichapan",                guest_count: 45,  status: "cotizado", notes: "Cena de gala, protocolo formal" },
+    { id: IDS.ev.grad_perez,   org_id: IDS.org, client_id: IDS.client.perez,   name: "Graduación Familia Pérez",          event_type: "Evento social",       event_date: "2026-07-05", event_time: "14:00", location: "Casa particular, Lomas de Querétaro",   guest_count: 60,  status: "cotizado", notes: "Menú informal, sin protocolo de mesas" },
+    { id: IDS.ev.cena_cemex,   org_id: IDS.org, client_id: IDS.client.cemex,   name: "Cena Aniversario CEMEX 50 años",    event_type: "Evento corporativo",  event_date: "2026-07-15", event_time: "20:00", location: "Planta CEMEX, Huichapan",                guest_count: 45,  status: "cotizado", notes: "Cena de gala, protocolo formal" },
   ])
   ok("6 eventos", evErr)
 
@@ -648,18 +648,18 @@ async function seed() {
     { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.chile_poblano,quantity: 15.5,  unit: "kg",     unit_cost:  54.00, total_cost:   837.00, purchased_at: "2026-04-12" },
     { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.cebolla,      quantity: 25.0,  unit: "kg",     unit_cost:  24.00, total_cost:   600.00, purchased_at: "2026-04-12" },
     { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.jitomate,     quantity: 20.0,  unit: "kg",     unit_cost:  34.00, total_cost:   680.00, purchased_at: "2026-04-12" },
-    { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.crema,        quantity: 28.0,  unit: "litro",  unit_cost:  54.00, total_cost:  1512.00, purchased_at: "2026-04-12" },
+    { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.crema,        quantity: 28.0,  unit: "l",  unit_cost:  54.00, total_cost:  1512.00, purchased_at: "2026-04-12" },
     { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.queso_fresco, quantity: 10.0,  unit: "kg",     unit_cost:  99.00, total_cost:   990.00, purchased_at: "2026-04-12" },
     { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.arroz,        quantity: 18.0,  unit: "kg",     unit_cost:  33.00, total_cost:   594.00, purchased_at: "2026-04-12" },
     { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.frijol,       quantity: 14.0,  unit: "kg",     unit_cost:  39.00, total_cost:   546.00, purchased_at: "2026-04-12" },
     { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.mantequilla,  quantity:  8.5,  unit: "kg",     unit_cost: 178.00, total_cost:  1513.00, purchased_at: "2026-04-12" },
     { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.cajeta,       quantity: 12.0,  unit: "kg",     unit_cost: 148.00, total_cost:  1776.00, purchased_at: "2026-04-13" },
-    { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.leche,        quantity: 25.0,  unit: "litro",  unit_cost:  29.00, total_cost:   725.00, purchased_at: "2026-04-13" },
-    { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.huevo,        quantity: 280,   unit: "pieza",  unit_cost:   4.60, total_cost:  1288.00, purchased_at: "2026-04-13" },
+    { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.leche,        quantity: 25.0,  unit: "l",  unit_cost:  29.00, total_cost:   725.00, purchased_at: "2026-04-13" },
+    { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.huevo,        quantity: 280,   unit: "pza",  unit_cost:   4.60, total_cost:  1288.00, purchased_at: "2026-04-13" },
     { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.lechuga,      quantity: 75,    unit: "pza",    unit_cost:  29.00, total_cost:  2175.00, purchased_at: "2026-04-13" },
     { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.limon,        quantity: 12.0,  unit: "kg",     unit_cost:  30.00, total_cost:   360.00, purchased_at: "2026-04-13" },
-    { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.pan_baguette, quantity: 28,    unit: "pieza",  unit_cost:  36.00, total_cost:  1008.00, purchased_at: "2026-04-13" },
-    { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.vino_blanco,  quantity: 12.0,  unit: "litro",  unit_cost: 188.00, total_cost:  2256.00, purchased_at: "2026-04-08" },
+    { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.pan_baguette, quantity: 28,    unit: "pza",  unit_cost:  36.00, total_cost:  1008.00, purchased_at: "2026-04-13" },
+    { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.vino_blanco,  quantity: 12.0,  unit: "l",  unit_cost: 188.00, total_cost:  2256.00, purchased_at: "2026-04-08" },
     { org_id: IDS.org, event_id: IDS.ev.boda_garcia, ingredient_id: IDS.ing.champiñones,  quantity: 15.0,  unit: "kg",     unit_cost:  87.00, total_cost:  1305.00, purchased_at: "2026-04-13" },
   ])
   ok("20 compras reales (Boda García)", apErr)
@@ -711,11 +711,11 @@ async function seed() {
     { requisition_id: reqId, ingredient_id: IDS.ing.aguacate,    quantity:  90,   unit: "pza",    unit_cost:  18.00, total_cost:  1620.00 },
     { requisition_id: reqId, ingredient_id: IDS.ing.arroz,       quantity:  12.0, unit: "kg",     unit_cost:  32.00, total_cost:   384.00 },
     { requisition_id: reqId, ingredient_id: IDS.ing.frijol,      quantity:  10.5, unit: "kg",     unit_cost:  38.00, total_cost:   399.00 },
-    { requisition_id: reqId, ingredient_id: IDS.ing.crema_batir, quantity:  13.5, unit: "litro",  unit_cost:  78.00, total_cost:  1053.00 },
-    { requisition_id: reqId, ingredient_id: IDS.ing.leche,       quantity:  18.0, unit: "litro",  unit_cost:  28.00, total_cost:   504.00 },
-    { requisition_id: reqId, ingredient_id: IDS.ing.huevo,       quantity: 225,   unit: "pieza",  unit_cost:   4.50, total_cost:  1012.50 },
+    { requisition_id: reqId, ingredient_id: IDS.ing.crema_batir, quantity:  13.5, unit: "l",  unit_cost:  78.00, total_cost:  1053.00 },
+    { requisition_id: reqId, ingredient_id: IDS.ing.leche,       quantity:  18.0, unit: "l",  unit_cost:  28.00, total_cost:   504.00 },
+    { requisition_id: reqId, ingredient_id: IDS.ing.huevo,       quantity: 225,   unit: "pza",  unit_cost:   4.50, total_cost:  1012.50 },
     { requisition_id: reqId, ingredient_id: IDS.ing.cilantro,    quantity:   9.0, unit: "manojo", unit_cost:  12.00, total_cost:   108.00 },
-    { requisition_id: reqId, ingredient_id: IDS.ing.pan_baguette,quantity:  22,   unit: "pieza",  unit_cost:  35.00, total_cost:   770.00 },
+    { requisition_id: reqId, ingredient_id: IDS.ing.pan_baguette,quantity:  22,   unit: "pza",  unit_cost:  35.00, total_cost:   770.00 },
   ])
   ok("14 items de requisición (Boda López)", riErr)
 

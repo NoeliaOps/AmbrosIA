@@ -11,7 +11,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { EmptyState } from "@/components/ui/empty-state"
+import { SUPPLIER_CATEGORIES } from "@/lib/constants"
 import { createSupplier, updateSupplier, deleteSupplier, type SupplierFormData } from "../actions"
 
 // Identidad del módulo (Catálogo → azul pizarra)
@@ -51,9 +53,10 @@ export function SupplierClient({ suppliers: initial }: { suppliers: Supplier[] }
   const [deleting, setDeleting] = useState<Supplier | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
   })
+  const watchCategory = watch("category")
 
   function openCreate() {
     setEditing(null)
@@ -199,7 +202,14 @@ export function SupplierClient({ suppliers: initial }: { suppliers: Supplier[] }
               </div>
               <div className="space-y-1.5">
                 <Label className="font-sans">Categoría</Label>
-                <Input {...register("category")} placeholder="Ej. Carnes, Verduras…" />
+                <Select value={watchCategory ?? ""} onValueChange={(v) => setValue("category", v ?? "")}>
+                  <SelectTrigger className="font-sans"><SelectValue placeholder="Selecciona" /></SelectTrigger>
+                  <SelectContent>
+                    {SUPPLIER_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c} className="font-sans">{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="font-sans">Contacto</Label>
