@@ -2,11 +2,10 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import {
-  CalendarDays, FileText, TrendingUp, CreditCard,
-  AlertTriangle, Clock, ClipboardList, Users, ArrowRight,
-  CheckCircle, BarChart3, Package,
+  CalendarDays, TrendingUp, AlertTriangle, Clock, ClipboardList,
+  Users, ArrowRight, CheckCircle2, Package, Wallet, Layers, ChevronRight, CircleDollarSign,
 } from "lucide-react"
-import { formatCurrency, formatShortDate } from "@/lib/utils"
+import { formatCurrency } from "@/lib/utils"
 import { PageHeader } from "@/components/layout/page-header"
 import { DashboardPeriod, type PresetKey } from "./_components/dashboard-period"
 import { PeriodStats, type TypeStat, type MonthStat } from "./_components/period-stats"
@@ -40,14 +39,15 @@ function resolvePeriod(preset: string | undefined, from?: string, to?: string, r
   return { key: "year" as PresetKey, start: iso(new Date(y, 0, 1)), end: iso(new Date(y, 11, 31)), label: `Año ${y}` }
 }
 
-// Colores de etapa unificados con el pipeline de Eventos y el Calendario.
-const STATUS_CFG: Record<string, { label: string; color: string }> = {
-  cotizado:       { label: "Cotizado",       color: "#3D5A80" },
-  contratado:     { label: "Contratado",     color: "#4C4F8A" },
-  en_requisicion: { label: "En requisición", color: "#2C6E6A" },
-  en_compras:     { label: "En compras",     color: "#9A5B3F" },
-  completado:     { label: "Completado",     color: "#2F6B4F" },
-}
+// Etapas del pipeline, en orden y con sus colores (unificados con Eventos y Calendario).
+const STAGES = [
+  { key: "cotizado",       label: "Cotizado",       color: "#3D5A80" },
+  { key: "contratado",     label: "Contratado",     color: "#4C4F8A" },
+  { key: "en_requisicion", label: "En requisición", color: "#2C6E6A" },
+  { key: "en_compras",     label: "En compras",     color: "#9A5B3F" },
+  { key: "completado",     label: "Completado",     color: "#2F6B4F" },
+] as const
+const STATUS_CFG = Object.fromEntries(STAGES.map((s) => [s.key, s])) as Record<string, (typeof STAGES)[number]>
 
 export default async function DashboardPage({
   searchParams,
@@ -60,42 +60,32 @@ export default async function DashboardPage({
   const today    = now.toISOString().slice(0, 10)
   const period   = resolvePeriod(preset, from, to, now)
   const in7Days  = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10)
-  const in30Days = new Date(now.getTime() + 30 * 86400000).toISOString().slice(0, 10)
-  const monthStart    = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-  const monthEnd      = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000).toISOString()
 
   const [
-    { data: activeEvents },
-    { data: overduePayments },
+    { data: pendingPayments },
     { data: upcomingPayments },
-    { data: confirmedQuotes },
     { data: needsRequisition },
-    { data: upcomingEvents },
+    { data: nextEvents },
     { data: profitData },
     { data: staleIngredients },
     { data: periodEvents },
   ] = await Promise.all([
-    supabase.from("events")
-      .select("id, name, event_date, status, guest_count, clients(name)")
-      .gte("event_date", monthStart).lte("event_date", monthEnd)
-      .neq("status", "cancelado").order("event_date"),
     supabase.from("payment_schedules")
       .select("id, description, amount, due_date, events(id, name)")
-      .eq("status", "pendiente").lt("due_date", today).order("due_date"),
+      .eq("status", "pendiente").order("due_date"),
     supabase.from("payment_schedules")
       .select("id, description, amount, due_date, events(id, name)")
       .eq("status", "pendiente").gte("due_date", today).lte("due_date", in7Days).order("due_date"),
-    supabase.from("quotes").select("total, margin_percent").eq("status", "aprobada"),
     supabase.from("events")
       .select("id, name, event_date, requisitions(id)")
       .lte("event_date", in7Days).gte("event_date", today)
       .neq("status", "cancelado").neq("status", "completado"),
     supabase.from("events")
       .select("id, name, event_date, status, guest_count, clients(name)")
-      .gt("event_date", today).lte("event_date", in30Days)
+      .gte("event_date", today)
       .neq("status", "cancelado").neq("status", "completado")
-      .order("event_date").limit(6),
+      .order("event_date").limit(7),
     supabase.from("events")
       .select("quotes(total, status), actual_purchases(total_cost), event_indirect_costs(amount), event_staff_assignments(computed_cost)")
       .eq("status", "completado"),
@@ -110,23 +100,30 @@ export default async function DashboardPage({
       .neq("status", "cancelado").order("event_date"),
   ])
 
-  const totalConfirmed = (confirmedQuotes ?? []).reduce((s, q) => s + q.total, 0)
-  const totalOverdue   = (overduePayments ?? []).reduce((s, p) => s + p.amount, 0)
+  // ── Cobranza ────────────────────────────────────────────────────────────────
+  type PayRow = { id: string; description: string; amount: number; due_date: string; events: { id: string; name: string } | null }
+  const pending = (pendingPayments ?? []) as unknown as PayRow[]
+  const overduePayments = pending.filter((p) => p.due_date < today)
+  const totalPending = pending.reduce((s, p) => s + p.amount, 0)
+  const totalOverdue = overduePayments.reduce((s, p) => s + p.amount, 0)
+  const upcomingPay = (upcomingPayments ?? []) as unknown as PayRow[]
+  const upcomingPayTotal = upcomingPay.reduce((s, p) => s + p.amount, 0)
+
   const eventsNeedingReq = (needsRequisition ?? []).filter((e) => {
     const reqs = e.requisitions as unknown as { id: string }[] | null
     return !reqs || reqs.length === 0
   })
 
-  type QuoteRow   = { total: number; status: string }
-  type CostRow    = { total_cost: number }
+  // ── Margen real (eventos completados) ────────────────────────────────────────
+  type QuoteRow = { total: number; status: string }
+  type CostRow = { total_cost: number }
   type IndirectRow = { amount: number }
-  type StaffRow   = { computed_cost: number }
-
+  type StaffRow = { computed_cost: number }
   const margins = (profitData ?? []).flatMap((ev) => {
-    const quotes   = ev.quotes as QuoteRow[] | null
-    const actuals  = ev.actual_purchases as CostRow[] | null
+    const quotes = ev.quotes as QuoteRow[] | null
+    const actuals = ev.actual_purchases as CostRow[] | null
     const indirects = ev.event_indirect_costs as IndirectRow[] | null
-    const staff    = ev.event_staff_assignments as StaffRow[] | null
+    const staff = ev.event_staff_assignments as StaffRow[] | null
     const q = (quotes ?? []).find((q) => q.status === "aprobada")
     if (!q || q.total === 0) return []
     const costs = (actuals ?? []).reduce((s, a) => s + a.total_cost, 0)
@@ -135,11 +132,6 @@ export default async function DashboardPage({
     return [(q.total - costs) / q.total * 100]
   })
   const avgMargin = margins.length > 0 ? margins.reduce((s, m) => s + m, 0) / margins.length : null
-  const inProcess = (activeEvents ?? []).filter((e) =>
-    ["contratado", "en_compras", "en_requisicion"].includes(e.status)
-  ).length
-  const thisMonthIds = new Set((activeEvents ?? []).map((e) => e.id))
-  const upcoming     = (upcomingEvents ?? []).filter((e) => !thisMonthIds.has(e.id))
 
   // ── Estadísticas del periodo ──────────────────────────────────────────────
   type PeriodQuote = { total: number; status: string; version_number: number }
@@ -149,6 +141,7 @@ export default async function DashboardPage({
   }
   const periodRows = (periodEvents ?? []).map((e) => ({
     type: (e.event_type && e.event_type.trim()) ? e.event_type.trim() : "Sin tipo",
+    status: e.status as string,
     date: e.event_date as string,
     guests: e.guest_count ?? 0,
     occurred: (e.event_date as string) <= today,
@@ -160,13 +153,17 @@ export default async function DashboardPage({
   const guestsServed  = periodRows.filter((r) => r.occurred).reduce((s, r) => s + r.guests, 0)
   const guestsBooked  = periodRows.filter((r) => !r.occurred).reduce((s, r) => s + r.guests, 0)
   const periodRevenue = periodRows.reduce((s, r) => s + r.revenue, 0)
+  const guestsTotal   = guestsServed + guestsBooked
+
+  // Embudo por etapa (dentro del periodo)
+  const stageCounts: Record<string, number> = {}
+  for (const r of periodRows) stageCounts[r.status] = (stageCounts[r.status] ?? 0) + 1
+  const stageMax = Math.max(1, ...STAGES.map((s) => stageCounts[s.key] ?? 0))
 
   const typeMap = new Map<string, TypeStat>()
   for (const r of periodRows) {
     const cur = typeMap.get(r.type) ?? { type: r.type, count: 0, guests: 0, revenue: 0 }
-    cur.count += 1
-    cur.guests += r.guests
-    cur.revenue += r.revenue
+    cur.count += 1; cur.guests += r.guests; cur.revenue += r.revenue
     typeMap.set(r.type, cur)
   }
   const byType: TypeStat[] = [...typeMap.values()].sort((a, b) => b.guests - a.guests)
@@ -175,7 +172,6 @@ export default async function DashboardPage({
   const monthMap = new Map<string, MonthStat>()
   const pStart = new Date(period.start + "T12:00:00")
   const pEnd   = new Date(period.end + "T12:00:00")
-  // Sembrar todos los meses del rango (cap a 12 columnas para que la barra sea legible).
   const monthsSpan = (pEnd.getFullYear() - pStart.getFullYear()) * 12 + (pEnd.getMonth() - pStart.getMonth()) + 1
   if (monthsSpan <= 12) {
     for (let i = 0; i < monthsSpan; i++) {
@@ -186,187 +182,114 @@ export default async function DashboardPage({
   }
   for (const r of periodRows) {
     if (!r.occurred) continue
-    const key = r.date.slice(0, 7)
-    const cur = monthMap.get(key)
+    const cur = monthMap.get(r.date.slice(0, 7))
     if (cur) { cur.guests += r.guests; cur.count += 1 }
   }
   const byMonth: MonthStat[] = [...monthMap.values()]
 
+  // ── Pulso del negocio (frase resumen) ────────────────────────────────────────
+  const eventsThisWeek = (nextEvents ?? []).filter((e) => (e.event_date as string) <= in7Days).length
+  const pulse = [
+    eventsThisWeek > 0 ? `${eventsThisWeek} evento${eventsThisWeek !== 1 ? "s" : ""} esta semana` : null,
+    overduePayments.length > 0 ? `${overduePayments.length} cobro${overduePayments.length !== 1 ? "s" : ""} vencido${overduePayments.length !== 1 ? "s" : ""}` : null,
+    avgMargin !== null ? `margen real ${avgMargin.toFixed(0)}%` : null,
+  ].filter(Boolean).join("  ·  ")
+
+  const attention = [
+    overduePayments.length > 0 && { icon: AlertTriangle, color: "#991B1B", title: `${overduePayments.length} cobro${overduePayments.length !== 1 ? "s" : ""} vencido${overduePayments.length !== 1 ? "s" : ""}`, detail: formatCurrency(totalOverdue), sample: overduePayments[0]?.events?.name, href: "/pagos" },
+    upcomingPay.length > 0 && { icon: Clock, color: "#8B6D24", title: `${upcomingPay.length} cobro${upcomingPay.length !== 1 ? "s" : ""} esta semana`, detail: formatCurrency(upcomingPayTotal), sample: upcomingPay[0]?.events?.name, href: "/pagos" },
+    eventsNeedingReq.length > 0 && { icon: ClipboardList, color: "#1E40AF", title: `${eventsNeedingReq.length} evento${eventsNeedingReq.length !== 1 ? "s" : ""} sin requisición`, detail: "próximos 7 días", sample: eventsNeedingReq[0]?.name, href: "/requisiciones" },
+    (staleIngredients ?? []).length > 0 && { icon: Package, color: "#8B6D24", title: `${(staleIngredients ?? []).length} precios desactualizados`, detail: "+30 días", sample: staleIngredients?.[0]?.name, href: "/catalogos/ingredientes" },
+  ].filter(Boolean) as { icon: React.ElementType; color: string; title: string; detail: string; sample?: string; href: string }[]
+
+  const marginColor = avgMargin === null ? "#8B6D24" : avgMargin >= 20 ? "#2F6B4F" : avgMargin >= 10 ? "#8B6D24" : "#991B1B"
+
   return (
-    <div className="space-y-8 pb-8">
-      {/* Page header */}
+    <div className="space-y-7 pb-8">
+      {/* ════════ Encabezado + palanca de periodo ════════ */}
       <PageHeader
-        title="Dashboard"
-        description={`Resumen ejecutivo · ${new Date().toLocaleDateString("es-MX", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}`}
+        title="Resumen ejecutivo"
+        description={pulse || new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         actions={
-          <Link href="/eventos" className="hidden sm:flex items-center gap-1.5 text-xs font-sans font-medium transition-colors border border-border rounded px-3 py-1.5 bg-card hover:border-gold/40" style={{ color: "var(--text-2)" }}>
-            <CalendarDays size={13} />
-            Ver todos los eventos
-          </Link>
+          <DashboardPeriod
+            activePreset={period.key}
+            from={period.key === "custom" ? period.start : ""}
+            to={period.key === "custom" ? period.end : ""}
+          />
         }
       />
 
-      {/* Alert banners */}
-      <div className="space-y-3">
-        {(overduePayments ?? []).length > 0 && (
-          <div className="alert-banner border-l-[var(--ember)]">
-            <div className="flex items-start gap-3">
-              <AlertTriangle size={15} className="shrink-0 mt-0.5" style={{ color: "var(--ember)" }} />
-              <div className="flex-1 min-w-0 space-y-2">
-                <p className="text-sm font-sans font-semibold" style={{ color: "var(--text-1)" }}>
-                  {(overduePayments ?? []).length} pago{(overduePayments ?? []).length !== 1 ? "s" : ""} vencido{(overduePayments ?? []).length !== 1 ? "s" : ""}
-                  <span className="ml-2 font-normal mono-data" style={{ color: "var(--ember)", fontSize: "0.82rem" }}>· {formatCurrency(totalOverdue)}</span>
-                </p>
-                <div className="space-y-1">
-                  {(overduePayments ?? []).map((p) => {
-                    const ev = p.events as { id: string; name: string } | null
-                    return (
-                      <Link key={p.id} href="/pagos"
-                        className="flex items-center justify-between gap-4 text-xs font-sans transition-colors group"
-                        style={{ color: "var(--text-2)" }}>
-                        <span className="truncate group-hover:text-foreground transition-colors">
-                          {ev?.name ?? "Evento"} · {p.description}
-                        </span>
-                        <span className="mono-data font-medium shrink-0" style={{ color: "var(--text-1)", fontSize: "0.8rem" }}>{formatCurrency(p.amount)}</span>
-                      </Link>
-                    )
-                  })}
-                </div>
-              </div>
-              <Link href="/pagos" className="text-xs font-sans shrink-0 font-medium hover:underline transition-colors" style={{ color: "var(--ember)" }}>
-                Gestionar →
-              </Link>
-            </div>
-          </div>
-        )}
+      {/* ════════ Banda de KPIs estrella ════════ */}
+      <div className="enterprise-card overflow-hidden animate-fade-up">
+        <div className="grid grid-cols-2 lg:grid-cols-4 divide-y divide-x divide-border lg:divide-y-0">
+          <StatCell
+            primary
+            label="Ingresos del periodo"
+            value={formatCurrency(periodRevenue)}
+            sub={`${eventsTotal} evento${eventsTotal !== 1 ? "s" : ""} · ${period.label}`}
+            accent="#2F6B4F"
+            icon={CircleDollarSign}
+          />
+          <StatCell
+            label="Margen real promedio"
+            value={avgMargin !== null ? `${avgMargin.toFixed(1)}%` : "—"}
+            sub={avgMargin === null ? "Sin eventos cerrados" : avgMargin >= 20 ? "En rango objetivo" : avgMargin >= 10 ? "Por debajo del objetivo" : "Revisar costos"}
+            accent={marginColor}
+            icon={TrendingUp}
+          />
+          <StatCell
+            label="Por cobrar"
+            value={formatCurrency(totalPending)}
+            sub={totalOverdue > 0 ? `${overduePayments.length} vencido${overduePayments.length !== 1 ? "s" : ""} · ${formatCurrency(totalOverdue)}` : "Sin vencidos"}
+            subDanger={totalOverdue > 0}
+            accent={totalOverdue > 0 ? "#991B1B" : "#4A5568"}
+            icon={Wallet}
+          />
+          <StatCell
+            label="Personas del periodo"
+            value={guestsTotal.toLocaleString("es-MX")}
+            sub={`${guestsServed.toLocaleString("es-MX")} atendidas · ${guestsBooked.toLocaleString("es-MX")} por atender`}
+            accent="#9A5B3F"
+            icon={Users}
+          />
+        </div>
+      </div>
 
-        {(upcomingPayments ?? []).length > 0 && (
-          <div className="alert-banner border-l-[var(--amber)]">
-            <div className="flex items-start gap-3">
-              <Clock size={15} className="shrink-0 mt-0.5" style={{ color: "var(--amber)" }} />
-              <div className="flex-1 min-w-0 space-y-2">
-                <p className="text-sm font-sans font-semibold" style={{ color: "var(--text-1)" }}>
-                  {(upcomingPayments ?? []).length} cobro{(upcomingPayments ?? []).length !== 1 ? "s" : ""} próximos
-                  <span className="ml-2 font-normal" style={{ color: "var(--text-2)", fontSize: "0.82rem" }}>próximos 7 días</span>
-                </p>
-                <div className="space-y-1">
-                  {(upcomingPayments ?? []).map((p) => {
-                    const ev = p.events as { id: string; name: string } | null
-                    return (
-                      <div key={p.id} className="flex items-center justify-between gap-4 text-xs font-sans" style={{ color: "var(--text-2)" }}>
-                        <span className="truncate">{ev?.name ?? "—"} · {p.description}</span>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="mono-data font-medium" style={{ color: "var(--text-1)", fontSize: "0.8rem" }}>{formatCurrency(p.amount)}</span>
-                          <span className="mono-data" style={{ color: "var(--amber)", fontSize: "0.75rem" }}>{p.due_date === today ? "Hoy" : formatShortDate(p.due_date)}</span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-              <Link href="/pagos" className="text-xs font-sans shrink-0 font-medium hover:underline transition-colors" style={{ color: "var(--amber)" }}>
-                Ver pagos →
-              </Link>
-            </div>
+      {/* ════════ Requiere tu atención ════════ */}
+      <div className="animate-fade-up" style={{ animationDelay: "40ms" }}>
+        <div className="section-header">
+          <h2 className="dash-h2">Requiere tu atención</h2>
+          {attention.length > 0 && (
+            <span className="mono-data" style={{ fontSize: "0.7rem", color: "var(--text-3)" }}>{attention.length} pendiente{attention.length !== 1 ? "s" : ""}</span>
+          )}
+        </div>
+        {attention.length === 0 ? (
+          <div className="enterprise-card flex items-center gap-3 px-4 py-4">
+            <CheckCircle2 size={18} style={{ color: "#2F6B4F" }} />
+            <p className="text-sm font-sans" style={{ color: "var(--text-2)" }}>Todo en orden — sin pendientes urgentes.</p>
           </div>
-        )}
-
-        {eventsNeedingReq.length > 0 && (
-          <div className="alert-banner" style={{ borderLeftColor: "var(--status-info)" }}>
-            <div className="flex items-start gap-3">
-              <ClipboardList size={15} className="shrink-0 mt-0.5" style={{ color: "var(--status-info)" }} />
-              <div className="flex-1 min-w-0 space-y-2">
-                <p className="text-sm font-sans font-semibold" style={{ color: "var(--text-1)" }}>
-                  {eventsNeedingReq.length} evento{eventsNeedingReq.length !== 1 ? "s" : ""} sin requisición
-                  <span className="ml-2 font-normal" style={{ color: "var(--text-2)", fontSize: "0.82rem" }}>próximos 7 días</span>
-                </p>
-                <div className="space-y-1">
-                  {eventsNeedingReq.map((e) => (
-                    <Link key={e.id} href={`/eventos/${e.id}`}
-                      className="flex items-center justify-between text-xs font-sans transition-colors group"
-                      style={{ color: "var(--text-2)" }}>
-                      <span className="truncate group-hover:text-foreground transition-colors">{e.name}</span>
-                      <span className="mono-data shrink-0 ml-4" style={{ color: "var(--status-info)", fontSize: "0.75rem" }}>{formatShortDate(e.event_date)}</span>
-                    </Link>
-                  ))}
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {attention.map((a, i) => (
+              <Link key={i} href={a.href}
+                className="enterprise-card flex items-center gap-3 px-4 py-3 group transition-colors"
+                style={{ borderLeft: `3px solid ${a.color}` }}>
+                <span className="shrink-0 rounded-md p-1.5" style={{ background: `color-mix(in srgb, ${a.color} 12%, white)` }}>
+                  <a.icon size={15} style={{ color: a.color }} />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-sans font-semibold truncate" style={{ color: "var(--text-1)" }}>{a.title}</p>
+                  {a.sample && <p className="text-xs font-sans truncate" style={{ color: "var(--text-3)" }}>{a.sample}</p>}
                 </div>
-              </div>
-              <Link href="/requisiciones" className="text-xs font-sans shrink-0 font-medium hover:underline transition-colors" style={{ color: "var(--status-info)" }}>
-                Ver →
+                <span className="mono-data shrink-0" style={{ fontSize: "0.78rem", fontWeight: 600, color: a.color }}>{a.detail}</span>
+                <ChevronRight size={15} className="shrink-0 transition-transform group-hover:translate-x-0.5" style={{ color: "var(--text-3)" }} />
               </Link>
-            </div>
-          </div>
-        )}
-
-        {(staleIngredients ?? []).length > 0 && (
-          <div className="alert-banner" style={{ borderLeftColor: "var(--amber)" }}>
-            <div className="flex items-start gap-3">
-              <Package size={15} className="shrink-0 mt-0.5" style={{ color: "var(--amber)" }} />
-              <div className="flex-1 min-w-0 space-y-2">
-                <p className="text-sm font-sans font-semibold" style={{ color: "var(--text-1)" }}>
-                  Precios de ingredientes desactualizados
-                  <span className="ml-2 font-normal" style={{ color: "var(--text-2)", fontSize: "0.82rem" }}>sin actualizar hace +30 días</span>
-                </p>
-                <div className="space-y-1">
-                  {(staleIngredients ?? []).map((ing) => {
-                    const days = Math.floor((now.getTime() - new Date(ing.updated_at).getTime()) / 86400000)
-                    return (
-                      <div key={ing.id} className="flex items-center justify-between gap-4 text-xs font-sans" style={{ color: "var(--text-2)" }}>
-                        <span className="truncate">{ing.name}</span>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="mono-data" style={{ color: "var(--text-1)", fontSize: "0.8rem" }}>{formatCurrency(ing.current_price)}<span style={{ color: "var(--text-3)" }}>/{ing.unit}</span></span>
-                          <span className="mono-data" style={{ color: "var(--amber)", fontSize: "0.72rem" }}>hace {days}d</span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-              <Link href="/catalogos/ingredientes" className="text-xs font-sans shrink-0 font-medium hover:underline transition-colors" style={{ color: "var(--amber)" }}>
-                Actualizar →
-              </Link>
-            </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* KPI tiles */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 stagger-children">
-        <KpiTile
-          label="Eventos este mes"
-          value={String((activeEvents ?? []).length)}
-          sub={inProcess > 0 ? `${inProcess} en proceso activo` : "Sin eventos en proceso"}
-          icon={CalendarDays}
-          accent="gold"
-        />
-        <KpiTile
-          label="Ingresos confirmados"
-          value={formatCurrency(totalConfirmed)}
-          sub={`${(confirmedQuotes ?? []).length} cotización${(confirmedQuotes ?? []).length !== 1 ? "es" : ""} aprobada${(confirmedQuotes ?? []).length !== 1 ? "s" : ""}`}
-          icon={FileText}
-          accent="emerald"
-        />
-        <KpiTile
-          label="Cobros vencidos"
-          value={totalOverdue > 0 ? formatCurrency(totalOverdue) : "Al día"}
-          sub={totalOverdue > 0 ? `${(overduePayments ?? []).length} hito${(overduePayments ?? []).length !== 1 ? "s" : ""} sin cobrar` : "No hay pagos vencidos"}
-          icon={CreditCard}
-          accent={totalOverdue > 0 ? "red" : "emerald"}
-        />
-        <KpiTile
-          label="Margen promedio"
-          value={avgMargin !== null ? `${avgMargin.toFixed(1)}%` : "—"}
-          sub={avgMargin !== null
-            ? avgMargin >= 30 ? "Excelente · Por encima del objetivo"
-            : avgMargin >= 20 ? "Saludable · En rango objetivo"
-            : "Bajo objetivo · Revisar costos"
-            : `${(profitData ?? []).length} evento${(profitData ?? []).length !== 1 ? "s" : ""} completado${(profitData ?? []).length !== 1 ? "s" : ""}`}
-          icon={avgMargin !== null && avgMargin >= 20 ? TrendingUp : BarChart3}
-          accent={avgMargin === null ? "gold" : avgMargin >= 20 ? "emerald" : "red"}
-        />
-      </div>
-
-      {/* Estadísticas del periodo */}
+      {/* ════════ Estadísticas del periodo ════════ */}
       <div className="animate-fade-up" style={{ animationDelay: "60ms" }}>
         <PeriodStats
           periodLabel={period.label}
@@ -377,63 +300,58 @@ export default async function DashboardPage({
           revenue={periodRevenue}
           byType={byType}
           byMonth={byMonth}
-          selector={
-            <DashboardPeriod
-              activePreset={period.key}
-              from={period.key === "custom" ? period.start : ""}
-              to={period.key === "custom" ? period.end : ""}
-            />
-          }
         />
       </div>
 
-      {/* Two-column layout */}
+      {/* ════════ Próximos eventos + embudo por etapa ════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 animate-fade-up" style={{ animationDelay: "80ms" }}>
-        {/* Events this month */}
+        {/* Próximos eventos */}
         <div className="lg:col-span-3 space-y-0">
           <div className="section-header">
-            <h2 style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "1.125rem", fontWeight: 600, color: "var(--text-1)", letterSpacing: "-0.01em" }}>Este mes</h2>
+            <h2 className="dash-h2">Próximos eventos</h2>
             <Link href="/eventos" className="flex items-center gap-1 text-xs font-sans hover:text-amber transition-colors" style={{ color: "var(--text-3)" }}>
               Ver todos <ArrowRight size={12} />
             </Link>
           </div>
-
-          {(activeEvents ?? []).length === 0 ? (
-            <div className="enterprise-card flex items-center gap-4 p-8 text-center justify-center">
-              <div className="text-center space-y-2">
-                <CalendarDays size={28} className="mx-auto text-muted-foreground/30" />
-                <p className="text-sm font-sans text-muted-foreground">Sin eventos este mes</p>
-              </div>
+          {(nextEvents ?? []).length === 0 ? (
+            <div className="enterprise-card p-8 text-center">
+              <CalendarDays size={26} className="mx-auto text-muted-foreground/30 mb-2" />
+              <p className="text-sm font-sans text-muted-foreground">Sin eventos próximos en agenda</p>
             </div>
           ) : (
             <div className="enterprise-card overflow-hidden divide-y divide-border">
-              {(activeEvents ?? []).map((e) => {
+              {(nextEvents ?? []).map((e) => {
                 const cfg = STATUS_CFG[e.status]
-                const d   = new Date(e.event_date + "T12:00:00")
+                const d = new Date(e.event_date + "T12:00:00")
+                const days = Math.round((d.getTime() - new Date(today + "T12:00:00").getTime()) / 86400000)
                 return (
-                  <Link key={e.id} href={`/eventos/${e.id}`}
-                    className="flex items-center gap-4 px-4 py-3 table-row-hover">
+                  <Link key={e.id} href={`/eventos/${e.id}`} className="flex items-center gap-4 px-4 py-3 table-row-hover">
                     <div className="w-10 shrink-0 text-center">
                       <p className="mono-data" style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--text-1)", lineHeight: 1 }}>{d.getDate()}</p>
-                      <p style={{ fontFamily: "var(--font-mono), ui-monospace, monospace", fontSize: "0.52rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-3)", marginTop: "0.2rem" }}>
+                      <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.52rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-3)", marginTop: "0.2rem" }}>
                         {d.toLocaleDateString("es-MX", { month: "short" })}
                       </p>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "0.9375rem", fontWeight: 500, color: "var(--text-1)", letterSpacing: "0.01em", lineHeight: 1.3 }} className="truncate">{e.name}</p>
+                      <p style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "0.9375rem", fontWeight: 500, color: "var(--text-1)", lineHeight: 1.3 }} className="truncate">{e.name}</p>
                       <p className="flex items-center gap-1.5 mt-0.5">
-                        <span className="truncate" style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", fontSize: "0.7rem", color: "var(--text-2)" }}>{(e.clients as { name: string } | null)?.name ?? "Sin cliente"}</span>
+                        <span className="truncate" style={{ fontFamily: "var(--font-sans)", fontSize: "0.7rem", color: "var(--text-2)" }}>{(e.clients as { name: string } | null)?.name ?? "Sin cliente"}</span>
                         <span style={{ color: "var(--text-3)" }}>·</span>
                         <Users size={10} className="shrink-0" style={{ color: "var(--text-3)" }} />
                         <span className="mono-data" style={{ fontSize: "0.7rem", color: "var(--text-2)" }}>{e.guest_count}</span>
                       </p>
                     </div>
-                    {cfg && (
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <div className="h-1.5 w-1.5 rounded-full" style={{ background: cfg.color }} />
-                        <span style={{ fontFamily: "var(--font-mono), ui-monospace, monospace", fontSize: "0.65rem", letterSpacing: "0.08em", textTransform: "uppercase", color: cfg.color }}>{cfg.label}</span>
-                      </div>
-                    )}
+                    <div className="shrink-0 text-right">
+                      <p className="mono-data" style={{ fontSize: "0.68rem", color: days <= 7 ? "#8B6D24" : "var(--text-3)" }}>
+                        {days === 0 ? "Hoy" : days === 1 ? "Mañana" : `en ${days} d`}
+                      </p>
+                      {cfg && (
+                        <p className="flex items-center justify-end gap-1 mt-0.5">
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: cfg.color }} />
+                          <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", letterSpacing: "0.06em", textTransform: "uppercase", color: cfg.color }}>{cfg.label}</span>
+                        </p>
+                      )}
+                    </div>
                   </Link>
                 )
               })}
@@ -441,64 +359,36 @@ export default async function DashboardPage({
           )}
         </div>
 
-        {/* Right column */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Upcoming events */}
-          <div className="space-y-0">
-            <div className="section-header">
-              <h2 style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "1.125rem", fontWeight: 600, color: "var(--text-1)", letterSpacing: "-0.01em" }}>Próximos 30 días</h2>
-            </div>
-            {upcoming.length === 0 ? (
-              <div className="enterprise-card p-6 text-center">
-                <CheckCircle size={22} className="mx-auto text-muted-foreground/30 mb-2" />
-                <p className="text-xs font-sans text-muted-foreground">Sin eventos próximos</p>
-              </div>
-            ) : (
-              <div className="enterprise-card overflow-hidden divide-y divide-border">
-                {upcoming.map((e) => {
-                  const cfg = STATUS_CFG[e.status]
-                  const d   = new Date(e.event_date + "T12:00:00")
-                  return (
-                    <Link key={e.id} href={`/eventos/${e.id}`}
-                      className="flex items-center gap-3 px-4 py-2.5 table-row-hover">
-                      <div className="w-8 shrink-0 text-center">
-                        <p className="mono-data" style={{ fontSize: "1.05rem", fontWeight: 600, color: "var(--text-1)", lineHeight: 1 }}>{d.getDate()}</p>
-                        <p style={{ fontFamily: "var(--font-mono), ui-monospace, monospace", fontSize: "0.5rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-3)", marginTop: "0.2rem" }}>
-                          {d.toLocaleDateString("es-MX", { month: "short" })}
-                        </p>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "0.875rem", fontWeight: 500, color: "var(--text-1)", letterSpacing: "0.01em" }} className="truncate">{e.name}</p>
-                        <p style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", fontSize: "0.65rem", color: "var(--text-2)" }} className="truncate">
-                          {(e.clients as { name: string } | null)?.name ?? "—"}
-                        </p>
-                      </div>
-                      {cfg && <div className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: cfg.color }} />}
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
+        {/* Embudo por etapa */}
+        <div className="lg:col-span-2 space-y-0">
+          <div className="section-header">
+            <h2 className="dash-h2">Por etapa</h2>
+            <span className="flex items-center gap-1 text-xs font-sans" style={{ color: "var(--text-3)" }}>
+              <Layers size={12} /> {period.label}
+            </span>
           </div>
-
-          {/* Quick stats */}
-          <div className="space-y-0">
-            <div className="section-header">
-              <h2 style={{ fontFamily: "var(--font-display), Georgia, serif", fontSize: "1.125rem", fontWeight: 600, color: "var(--text-1)", letterSpacing: "-0.01em" }}>Resumen</h2>
-            </div>
-            <div className="enterprise-card divide-y divide-border">
-              {[
-                { label: "Cotizaciones aprobadas", value: String((confirmedQuotes ?? []).length) },
-                { label: "Eventos completados",    value: String((profitData ?? []).length) },
-                { label: "Próximos cobros (7d)",   value: String((upcomingPayments ?? []).length) },
-                { label: "Eventos este mes",        value: String((activeEvents ?? []).length) },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex items-center justify-between px-4 py-2.5">
-                  <span style={{ fontFamily: "var(--font-sans), system-ui, sans-serif", fontSize: "0.75rem", color: "var(--text-2)" }}>{label}</span>
-                  <span className="mono-data" style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-1)" }}>{value}</span>
-                </div>
-              ))}
-            </div>
+          <div className="enterprise-card p-4 space-y-3">
+            {eventsTotal === 0 ? (
+              <p className="text-sm font-sans text-muted-foreground text-center py-6">Sin eventos en el periodo</p>
+            ) : (
+              STAGES.map((s) => {
+                const n = stageCounts[s.key] ?? 0
+                return (
+                  <Link key={s.key} href="/eventos" className="block group">
+                    <div className="flex items-center justify-between gap-3 mb-1">
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ background: s.color }} />
+                        <span className="text-sm font-sans truncate transition-colors group-hover:text-foreground" style={{ color: "var(--text-2)" }}>{s.label}</span>
+                      </span>
+                      <span className="mono-data shrink-0" style={{ fontSize: "0.85rem", fontWeight: 600, color: n > 0 ? "var(--text-1)" : "var(--text-3)" }}>{n}</span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: "var(--surface-3, #EBEBEC)" }}>
+                      <div className="h-full rounded-full transition-all" style={{ width: `${(n / stageMax) * 100}%`, background: s.color }} />
+                    </div>
+                  </Link>
+                )
+              })
+            )}
           </div>
         </div>
       </div>
@@ -506,56 +396,33 @@ export default async function DashboardPage({
   )
 }
 
-function KpiTile({
-  label, value, sub, icon: Icon, accent,
+function StatCell({
+  label, value, sub, accent, icon: Icon, primary, subDanger,
 }: {
   label: string
   value: string
   sub: string
+  accent: string
   icon: React.ElementType
-  accent: "gold" | "emerald" | "red" | "blue"
+  primary?: boolean
+  subDanger?: boolean
 }) {
-  const config = {
-    gold:    { c: "#8B6D24" },
-    emerald: { c: "#2F6B4F" },
-    red:     { c: "#991B1B" },
-    blue:    { c: "#3D5A80" },
-  }[accent]
-  const tile = { border: config.c, icon: config.c, iconBg: `color-mix(in srgb, ${config.c} 12%, white)` }
-
-  const isMonetaryOrPercent = value.startsWith("$") || value.endsWith("%")
-
   return (
-    <div className="kpi-tile" style={{ borderLeftColor: tile.border }}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1.5 min-w-0 flex-1">
-          <p style={{
-            fontFamily: "var(--font-mono), ui-monospace, monospace",
-            fontSize: "0.6rem", fontWeight: 500,
-            letterSpacing: "0.16em", textTransform: "uppercase",
-            color: "var(--text-3)",
-          }}>{label}</p>
-          <p className={isMonetaryOrPercent ? "mono-data" : undefined} style={{
-            fontFamily: isMonetaryOrPercent ? "var(--font-mono), ui-monospace, monospace" : "var(--font-display), Georgia, serif",
-            fontSize: isMonetaryOrPercent ? "1.35rem" : "1.625rem",
-            fontWeight: 600,
-            letterSpacing: isMonetaryOrPercent ? "-0.01em" : "-0.02em",
-            lineHeight: 1.05,
-            color: "var(--text-1)",
-            fontFeatureSettings: '"lnum" 1, "tnum" 1',
-          }}>{value}</p>
-          <p style={{
-            fontFamily: "var(--font-sans), system-ui, sans-serif",
-            fontSize: "0.72rem",
-            color: "var(--text-3)",
-            letterSpacing: "0.01em",
-            lineHeight: 1.4,
-          }}>{sub}</p>
-        </div>
-        <div className="shrink-0 rounded p-1.5" style={{ background: tile.iconBg }}>
-          <Icon size={14} style={{ color: tile.icon }} />
-        </div>
+    <div className="relative p-5 sm:p-6" style={primary ? { background: "color-mix(in srgb, #2F6B4F 4%, white)" } : undefined}>
+      {primary && <span className="absolute left-0 top-0 h-full w-[3px]" style={{ background: accent }} />}
+      <div className="flex items-start justify-between gap-2">
+        <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.6rem", fontWeight: 500, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-3)" }}>{label}</p>
+        <span className="shrink-0 rounded-md p-1" style={{ background: `color-mix(in srgb, ${accent} 12%, white)` }}>
+          <Icon size={13} style={{ color: accent }} />
+        </span>
       </div>
+      <p className="mono-data" style={{
+        fontSize: primary ? "1.9rem" : "1.45rem",
+        fontWeight: 700, lineHeight: 1.05, letterSpacing: "-0.01em",
+        color: "var(--text-1)", marginTop: "0.5rem",
+        fontFeatureSettings: '"lnum" 1, "tnum" 1',
+      }}>{value}</p>
+      <p style={{ fontFamily: "var(--font-sans)", fontSize: "0.72rem", lineHeight: 1.4, marginTop: "0.3rem", color: subDanger ? "#991B1B" : "var(--text-3)" }}>{sub}</p>
     </div>
   )
 }

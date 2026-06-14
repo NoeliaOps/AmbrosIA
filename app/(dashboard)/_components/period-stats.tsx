@@ -27,7 +27,7 @@ export function PeriodStats({
   revenue: number
   byType: TypeStat[]
   byMonth: MonthStat[]
-  selector: ReactNode
+  selector?: ReactNode
 }) {
   const avgPerEvent = occurredCount > 0 ? Math.round(guestsServed / occurredCount) : 0
   const maxTypeGuests = Math.max(1, ...byType.map((t) => t.guests))

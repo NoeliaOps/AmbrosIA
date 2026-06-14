@@ -324,6 +324,13 @@
     width: 2rem; height: 1px;
     background: var(--amber);
   }
+  .dash-h2 {
+    font-family: var(--font-display), Georgia, serif;
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-1);
+  }
 
   /* ══════════════════════════════════════════════════════
      STATUS PILLS — para fondos claros (light theme)
