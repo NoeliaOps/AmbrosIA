@@ -430,7 +430,7 @@ export function ComprasTab({
       {/* ── Indirect costs ────────────────────────────────────────────────── */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-heading text-base font-semibold">Costos indirectos</h3>
+          <h3 className="font-heading text-base font-semibold">Costos indirectos y servicios</h3>
           {availableCategories.length > 0 && (
             <Button size="sm" variant="outline" className="font-sans text-xs" onClick={openNewIndirect}>
               <Plus size={13} className="mr-1" /> Agregar costo
@@ -440,7 +440,7 @@ export function ComprasTab({
         {indirectCosts.length === 0 ? (
           <div className="rounded-md border border-dashed border-border p-6 text-center">
             <p className="text-sm font-sans text-muted-foreground">
-              Agrega costos indirectos para este evento (renta de equipo, logística, etc.)
+              Agrega costos indirectos y servicios de este evento (seguridad, valet, mobiliario, DJ, logística…).
             </p>
           </div>
         ) : (

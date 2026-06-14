@@ -3,19 +3,22 @@
 import { useState } from "react"
 import { IndirectCostClient } from "./indirect-cost-client"
 import { OverheadClient, type OverheadRow } from "./overhead-client"
+import { ServiceClient } from "./service-client"
 
 type Props = {
   costs: Parameters<typeof IndirectCostClient>[0]["costs"]
   overhead: OverheadRow[]
+  services: OverheadRow[]
   eventCounts: Record<string, number>
+  eventCountsWeek: Record<string, number>
 }
 
-export function CostsView({ costs, overhead, eventCounts }: Props) {
-  const [view, setView] = useState<"gastos" | "reglas">("gastos")
+export function CostsView({ costs, overhead, services, eventCounts, eventCountsWeek }: Props) {
+  const [view, setView] = useState<"gastos" | "servicios" | "reglas">("gastos")
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-1 p-1 rounded-lg w-fit" style={{ background: "var(--surface-2, #F4F4F5)" }}>
-        {([["gastos", "Gastos generales"], ["reglas", "Reglas por evento"]] as const).map(([k, label]) => (
+        {([["gastos", "Gastos generales"], ["servicios", "Servicios"], ["reglas", "Reglas por evento"]] as const).map(([k, label]) => (
           <button
             key={k}
             onClick={() => setView(k)}
@@ -29,9 +32,9 @@ export function CostsView({ costs, overhead, eventCounts }: Props) {
         ))}
       </div>
 
-      {view === "gastos"
-        ? <OverheadClient overhead={overhead} eventCounts={eventCounts} />
-        : <IndirectCostClient costs={costs} />}
+      {view === "gastos" && <OverheadClient overhead={overhead} eventCounts={eventCounts} />}
+      {view === "servicios" && <ServiceClient services={services} eventCounts={eventCounts} eventCountsWeek={eventCountsWeek} />}
+      {view === "reglas" && <IndirectCostClient costs={costs} />}
     </div>
   )
 }

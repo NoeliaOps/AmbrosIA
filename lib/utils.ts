@@ -32,6 +32,27 @@ export function formatPercent(value: number, decimals = 1): string {
   return `${value.toFixed(decimals)}%`
 }
 
+// ── Semana ISO (lunes-domingo) ────────────────────────────────────────────────
+// Devuelve la fecha (YYYY-MM-DD) del LUNES de la semana que contiene `dateStr`.
+// Se usa como clave para prorratear costos semanales entre los eventos de la semana.
+export function weekStartKey(dateStr: string): string {
+  const d = new Date(dateStr + "T12:00:00")
+  const dow = (d.getDay() + 6) % 7 // 0 = lunes … 6 = domingo
+  d.setDate(d.getDate() - dow)
+  return d.toISOString().slice(0, 10)
+}
+
+// Etiqueta legible de una semana a partir de su lunes: "9–15 jun 2026".
+export function weekLabel(mondayKey: string): string {
+  const mon = new Date(mondayKey + "T12:00:00")
+  const sun = new Date(mon)
+  sun.setDate(sun.getDate() + 6)
+  const sameMonth = mon.getMonth() === sun.getMonth()
+  const dM = (d: Date) => d.toLocaleDateString("es-MX", { day: "numeric", month: "short" })
+  const left = sameMonth ? String(mon.getDate()) : dM(mon)
+  return `${left}–${dM(sun)} ${sun.getFullYear()}`
+}
+
 // Google Calendar "add event" URL — opens pre-filled in a new tab, no OAuth needed
 export function googleCalendarEventUrl(params: {
   title: string

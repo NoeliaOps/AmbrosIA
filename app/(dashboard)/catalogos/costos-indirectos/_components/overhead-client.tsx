@@ -13,7 +13,7 @@ import { createOverhead, updateOverhead, deleteOverhead } from "../overhead-acti
 
 const ACCENT = "#6B4A2F"
 
-export type OverheadRow = { id: string; concept: string; amount: number; period: string }
+export type OverheadRow = { id: string; concept: string; amount: number; period: string; period_type: string; kind: string }
 type Props = { overhead: OverheadRow[]; eventCounts: Record<string, number> }
 
 function monthLabel(key: string) {
@@ -59,7 +59,7 @@ export function OverheadClient({ overhead: initial, eventCounts }: Props) {
   async function save() {
     if (!form.concept.trim()) { toast.error("Indica el concepto"); return }
     setLoading(true)
-    const payload = { concept: form.concept.trim(), amount: Number(form.amount) || 0, month: form.month }
+    const payload = { concept: form.concept.trim(), amount: Number(form.amount) || 0, kind: "overhead" as const, period_type: "month" as const, period_value: form.month }
     const res = editing ? await updateOverhead(editing.id, payload) : await createOverhead(payload)
     if (res.error || !res.data) { toast.error(res.error ?? "Error"); setLoading(false); return }
     const row = res.data as unknown as OverheadRow

@@ -465,13 +465,28 @@ async function seed() {
   // ── indirect cost categories ───────────────────────────────────────────────
   console.log("\n💰  Indirect cost categories")
   const { error: icatErr } = await supabase.from("indirect_cost_categories").insert([
-    { id: IDS.icat.renta_equipo, org_id: IDS.org, name: "Renta de equipo",    allocation_method: "per_event",  default_amount: 3500.00, notes: "Loza, cubiertos, mesas y sillas adicionales" },
-    { id: IDS.icat.logistica,    org_id: IDS.org, name: "Logística y flete",   allocation_method: "per_event",  default_amount: 1800.00, notes: "Transporte de equipo e insumos al venue" },
-    { id: IDS.icat.decoracion,   org_id: IDS.org, name: "Decoración de mesas", allocation_method: "per_guest",  default_amount: 85.00,   notes: "Centros de mesa y mantelería especial" },
-    { id: IDS.icat.cristaleria,  org_id: IDS.org, name: "Cristalería premium", allocation_method: "per_guest",  default_amount: 45.00,   notes: "Copas de vino y cristalería de lujo" },
-    { id: IDS.icat.gas_cocina,   org_id: IDS.org, name: "Gas para cocina",     allocation_method: "percentage", default_amount: 2.5,     notes: "2.5% del total de la cotización" },
+    // Reglas por evento (allocation_method válido: fixed | per_guest | percentage)
+    { id: IDS.icat.renta_equipo, org_id: IDS.org, name: "Renta de equipo",    allocation_method: "fixed",      default_amount: 3500.00, description: "Loza, cubiertos, mesas y sillas adicionales" },
+    { id: IDS.icat.logistica,    org_id: IDS.org, name: "Logística y flete",   allocation_method: "fixed",      default_amount: 1800.00, description: "Transporte de equipo e insumos al venue" },
+    { id: IDS.icat.decoracion,   org_id: IDS.org, name: "Decoración de mesas", allocation_method: "per_guest",  default_amount: 85.00,   description: "Centros de mesa y mantelería especial" },
+    { id: IDS.icat.cristaleria,  org_id: IDS.org, name: "Cristalería premium", allocation_method: "per_guest",  default_amount: 45.00,   description: "Copas de vino y cristalería de lujo" },
+    { id: IDS.icat.gas_cocina,   org_id: IDS.org, name: "Gas para cocina",     allocation_method: "percentage", default_amount: 2.5,     description: "2.5% del total de la cotización" },
+    // Servicios (costos indirectos por evento)
+    { org_id: IDS.org, name: "Seguridad",               allocation_method: "fixed", default_amount: 3500.00, description: "Servicio de seguridad para el evento" },
+    { org_id: IDS.org, name: "Valet parking",           allocation_method: "fixed", default_amount: 2800.00, description: "Servicio de valet" },
+    { org_id: IDS.org, name: "DJ / Música",             allocation_method: "fixed", default_amount: 6000.00, description: "DJ, sonido o grupo en vivo" },
+    { org_id: IDS.org, name: "Mobiliario y equipo",     allocation_method: "fixed", default_amount: 4500.00, description: "Renta de mobiliario, vajilla, carpas" },
+    { org_id: IDS.org, name: "Limpieza",                allocation_method: "fixed", default_amount: 1800.00, description: "Servicio de limpieza post-evento" },
+    { org_id: IDS.org, name: "Transporte / Logística",  allocation_method: "fixed", default_amount: 2500.00, description: "Traslado de equipo y personal" },
   ])
-  ok("5 categorías de costos indirectos", icatErr)
+  ok("categorías de costos indirectos y servicios", icatErr)
+
+  // Servicios semanales prorrateados (gastos generales tipo 'service' por semana)
+  const { error: svcErr } = await supabase.from("overhead_expenses").insert([
+    { org_id: IDS.org, concept: "Vigilancia semanal",            amount: 4200, period: "2026-06-08", period_type: "week", kind: "service", notes: "Guardia fija de fin de semana" },
+    { org_id: IDS.org, concept: "Renta de mobiliario (semana)",  amount: 7500, period: "2026-06-08", period_type: "week", kind: "service", notes: "Sillas, mesas y carpas" },
+  ])
+  ok("servicios semanales", svcErr)
 
   // ── staff ──────────────────────────────────────────────────────────────────
   console.log("\n👥  Staff members")

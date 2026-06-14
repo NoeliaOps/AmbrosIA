@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { PageHeader } from "@/components/layout/page-header"
-import { formatCurrency, formatShortDate } from "@/lib/utils"
+import { formatCurrency, formatShortDate, weekStartKey } from "@/lib/utils"
 import { TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Minus, Equal } from "lucide-react"
 
 export const metadata: Metadata = { title: "Utilidad Real" }
@@ -64,24 +64,40 @@ export default async function UtilidadPage({
 
   const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE)
 
-  // Gastos generales prorrateados: total del mes ÷ número de eventos del mes.
+  // Gastos generales y servicios prorrateados: el total de cada periodo se reparte
+  // entre los eventos de ese periodo (mes → eventos del mes, semana → eventos de la semana).
   const [{ data: overheadRows }, { data: allEventDates }] = await Promise.all([
-    supabase.from("overhead_expenses").select("period, amount"),
+    supabase.from("overhead_expenses").select("period, amount, period_type"),
     supabase.from("events").select("event_date").neq("status", "cancelado"),
   ])
   const overheadByMonth: Record<string, number> = {}
+  const overheadByWeek: Record<string, number> = {}
   for (const o of overheadRows ?? []) {
-    const k = (o.period as string).slice(0, 7)
-    overheadByMonth[k] = (overheadByMonth[k] ?? 0) + o.amount
+    if ((o.period_type as string) === "week") {
+      const k = o.period as string // ya es el lunes de la semana
+      overheadByWeek[k] = (overheadByWeek[k] ?? 0) + o.amount
+    } else {
+      const k = (o.period as string).slice(0, 7)
+      overheadByMonth[k] = (overheadByMonth[k] ?? 0) + o.amount
+    }
   }
   const eventCountByMonth: Record<string, number> = {}
+  const eventCountByWeek: Record<string, number> = {}
   for (const e of allEventDates ?? []) {
-    const k = (e.event_date as string).slice(0, 7)
-    eventCountByMonth[k] = (eventCountByMonth[k] ?? 0) + 1
+    const d = e.event_date as string
+    const m = d.slice(0, 7)
+    eventCountByMonth[m] = (eventCountByMonth[m] ?? 0) + 1
+    const w = weekStartKey(d)
+    eventCountByWeek[w] = (eventCountByWeek[w] ?? 0) + 1
   }
-  const overheadPerEvent = (monthKey: string) => {
-    const c = eventCountByMonth[monthKey] ?? 0
-    return c > 0 ? (overheadByMonth[monthKey] ?? 0) / c : 0
+  const overheadPerEvent = (dateStr: string) => {
+    const m = dateStr.slice(0, 7)
+    const w = weekStartKey(dateStr)
+    const cm = eventCountByMonth[m] ?? 0
+    const cw = eventCountByWeek[w] ?? 0
+    const monthShare = cm > 0 ? (overheadByMonth[m] ?? 0) / cm : 0
+    const weekShare = cw > 0 ? (overheadByWeek[w] ?? 0) / cw : 0
+    return monthShare + weekShare
   }
 
   type QuoteRow = { total: number; status: string; version_number: number }
@@ -107,7 +123,7 @@ export default async function UtilidadPage({
     const staffCost = (staffAssignments ?? []).reduce((s, a) => s + a.computed_cost, 0)
     const commissionCost = (commissionsRaw ?? []).reduce((s, c) => s + c.amount, 0)
     const tastingCost = (tastingsRaw ?? []).filter((t) => t.status !== "cancelada").reduce((s, t) => s + t.cost, 0)
-    const overheadCost = overheadPerEvent((ev.event_date as string).slice(0, 7))
+    const overheadCost = overheadPerEvent(ev.event_date as string)
     const profit = revenue - ingredientCost - indirectCost - staffCost - commissionCost - tastingCost - overheadCost
     const margin = revenue > 0 ? (profit / revenue) * 100 : null
 
@@ -213,7 +229,7 @@ export default async function UtilidadPage({
               <StatementLine label="Personal" amount={-totalStaff} pct={pct(totalStaff)} sign="minus" dim />
               <StatementLine label="Comisiones" amount={-totalCommissions} pct={pct(totalCommissions)} sign="minus" dim />
               <StatementLine label="Degustaciones" amount={-totalTastings} pct={pct(totalTastings)} sign="minus" dim />
-              <StatementLine label="Gastos generales (prorrateo)" amount={-totalOverhead} pct={pct(totalOverhead)} sign="minus" dim />
+              <StatementLine label="Gastos generales y servicios (prorrateo)" amount={-totalOverhead} pct={pct(totalOverhead)} sign="minus" dim />
               <StatementLine label={totalProfit >= 0 ? "Utilidad" : "Pérdida"} amount={totalProfit} pct={totalMargin ?? 0} sign="equal" result resultColor={totalProfit >= 0 ? ACCENT : LOSS} />
             </div>
           </div>

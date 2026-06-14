@@ -1065,9 +1065,11 @@ export type Database = {
           concept: string
           created_at: string
           id: string
+          kind: string
           notes: string | null
           org_id: string
           period: string
+          period_type: string
           updated_at: string
         }
         Insert: {
@@ -1075,9 +1077,11 @@ export type Database = {
           concept: string
           created_at?: string
           id?: string
+          kind?: string
           notes?: string | null
           org_id: string
           period: string
+          period_type?: string
           updated_at?: string
         }
         Update: {
@@ -1085,9 +1089,11 @@ export type Database = {
           concept?: string
           created_at?: string
           id?: string
+          kind?: string
           notes?: string | null
           org_id?: string
           period?: string
+          period_type?: string
           updated_at?: string
         }
         Relationships: [
