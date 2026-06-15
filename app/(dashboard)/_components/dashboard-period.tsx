@@ -40,6 +40,7 @@ export function DashboardPeriod({
 
   function applyCustom() {
     if (!fromVal || !toVal) return
+    if (fromVal > toVal) return
     const params = new URLSearchParams(searchParams.toString())
     params.set("preset", "custom")
     params.set("from", fromVal)
@@ -98,7 +99,7 @@ export function DashboardPeriod({
           />
           <button
             onClick={applyCustom}
-            disabled={!fromVal || !toVal}
+            disabled={!fromVal || !toVal || fromVal > toVal}
             className="h-7 rounded-md px-3 text-xs font-sans font-medium text-white transition-colors disabled:opacity-50"
             style={{ background: "#2D2926" }}
           >

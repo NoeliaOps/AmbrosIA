@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
-import { Plus, Pencil, Trash2, Sparkles, CalendarRange } from "lucide-react"
+import { Plus, Pencil, Trash2, Sparkles, CalendarRange, Check, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -38,6 +38,7 @@ export function ServiceClient({ services: initial, eventCounts, eventCountsWeek 
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<OverheadRow | null>(null)
   const [loading, setLoading] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [form, setForm] = useState<{ concept: string; period_type: "week" | "month"; week_date: string; month: string; amount: string }>({
     concept: "", period_type: "week", week_date: todayISO(), month: todayISO().slice(0, 7), amount: "",
   })
@@ -156,10 +157,18 @@ export function ServiceClient({ services: initial, eventCounts, eventCountsWeek 
                   <div key={s.id} className="flex items-center gap-3 px-4 py-2.5 group">
                     <span className="flex-1 font-sans text-sm" style={{ color: "var(--text-1)" }}>{s.concept}</span>
                     <span className="mono-data text-sm font-medium">{formatCurrency(s.amount)}</span>
-                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(s)}><Pencil size={13} /></Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => remove(s)}><Trash2 size={13} /></Button>
-                    </div>
+                    {deleting === s.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-sans text-destructive">¿Eliminar?</span>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => { remove(s); setDeleting(null) }}><Check size={13} /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDeleting(null)}><X size={13} /></Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(s)}><Pencil size={13} /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(s.id)}><Trash2 size={13} /></Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

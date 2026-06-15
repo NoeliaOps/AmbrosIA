@@ -32,7 +32,8 @@ function resolvePeriod(preset: string | undefined, from?: string, to?: string, r
     return { key: "quarter" as PresetKey, start: iso(start), end: iso(end), label: `${q + 1}.º trimestre ${y}` }
   }
   if (preset === "12m") {
-    const start = new Date(ref.getTime() - 364 * 86400000)
+    const start = new Date(ref)
+    start.setFullYear(start.getFullYear() - 1)
     return { key: "12m" as PresetKey, start: iso(start), end: iso(ref), label: "Últimos 12 meses" }
   }
   // default: este año
@@ -64,7 +65,6 @@ export default async function DashboardPage({
 
   const [
     { data: pendingPayments },
-    { data: upcomingPayments },
     { data: needsRequisition },
     { data: nextEvents },
     { data: profitData },
@@ -74,9 +74,6 @@ export default async function DashboardPage({
     supabase.from("payment_schedules")
       .select("id, description, amount, due_date, events(id, name)")
       .eq("status", "pendiente").order("due_date"),
-    supabase.from("payment_schedules")
-      .select("id, description, amount, due_date, events(id, name)")
-      .eq("status", "pendiente").gte("due_date", today).lte("due_date", in7Days).order("due_date"),
     supabase.from("events")
       .select("id, name, event_date, requisitions(id)")
       .lte("event_date", in7Days).gte("event_date", today)
@@ -88,7 +85,7 @@ export default async function DashboardPage({
       .order("event_date").limit(7),
     supabase.from("events")
       .select("quotes(total, status), actual_purchases(total_cost), event_indirect_costs(amount), event_staff_assignments(computed_cost)")
-      .eq("status", "completado"),
+      .eq("status", "completado").gte("event_date", period.start).lte("event_date", period.end),
     supabase.from("ingredients")
       .select("id, name, unit, current_price, updated_at")
       .lt("updated_at", thirtyDaysAgo)
@@ -106,7 +103,7 @@ export default async function DashboardPage({
   const overduePayments = pending.filter((p) => p.due_date < today)
   const totalPending = pending.reduce((s, p) => s + p.amount, 0)
   const totalOverdue = overduePayments.reduce((s, p) => s + p.amount, 0)
-  const upcomingPay = (upcomingPayments ?? []) as unknown as PayRow[]
+  const upcomingPay = pending.filter((p) => p.due_date >= today && p.due_date <= in7Days)
   const upcomingPayTotal = upcomingPay.reduce((s, p) => s + p.amount, 0)
 
   const eventsNeedingReq = (needsRequisition ?? []).filter((e) => {
