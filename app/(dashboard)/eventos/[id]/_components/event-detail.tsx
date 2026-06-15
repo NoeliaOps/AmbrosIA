@@ -9,7 +9,7 @@ import { toast } from "sonner"
 import {
   CalendarDays, MapPin, Users, ChevronRight, Pencil, Check, X,
   ArrowLeft, FileText, ClipboardList, Plus, Trash2, Calendar,
-  Package, ShoppingCart, UtensilsCrossed
+  Package, ShoppingCart, UtensilsCrossed, ShieldCheck, Send, Clock, RotateCcw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,6 +30,7 @@ import { addEventDish, updateEventDishServings, removeEventDish, applyMenuTempla
 import { generateRequisition, updateRequisitionStatus, deleteRequisition, generatePurchaseOrders, updatePOStatus } from "../requisition-actions"
 import { consumeEvent } from "@/app/(dashboard)/inventario/actions"
 import { sendQuoteEmail, sendContractEmail } from "@/app/actions/send-email"
+import { sendForSignature, signContractMock, resetSignature } from "../signature-actions"
 import { ComprasTab } from "./compras-tab"
 import { PersonalTab } from "./personal-tab"
 
@@ -158,6 +159,7 @@ type PurchaseOrder = {
   purchase_order_items: POItem[]
 }
 
+type SignatureAudit = { at: string; event: string }
 type Contract = {
   id: string
   quote_id: string | null
@@ -165,6 +167,12 @@ type Contract = {
   status: string
   signed_at: string | null
   notes: string | null
+  signature_provider?: string | null
+  signer_name?: string | null
+  signer_email?: string | null
+  nom151_folio?: string | null
+  signature_hash?: string | null
+  signature_audit?: SignatureAudit[]
 }
 
 type Event = {
@@ -341,6 +349,11 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
     initialContract?.clauses ?? []
   )
   const [savingContract, setSavingContract] = useState(false)
+
+  // contract signature flow state (mock)
+  const [sendSignOpen, setSendSignOpen] = useState(false)
+  const [signForm, setSignForm] = useState({ name: "", email: "" })
+  const [signing, setSigning] = useState(false)
 
   // requisition + PO state
   const [requisition, setRequisition] = useState<Requisition | null>(initialRequisition)
@@ -552,14 +565,42 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
     setSavingContract(false)
   }
 
-  async function signContract() {
+  // ── firma digital (mock) ────────────────────────────────────────────────────
+  function openSendForSignature() {
+    setSignForm({ name: event.clients?.name ?? "", email: event.clients?.email ?? "" })
+    setSendSignOpen(true)
+  }
+
+  async function handleSendForSignature() {
     if (!contract) return
-    setSavingContract(true)
-    const { error } = await updateContract(contract.id, event.id, { clauses: contractClauses, status: "firmado" })
-    if (error) { toast.error(error); setSavingContract(false); return }
-    setContract((prev) => prev ? { ...prev, status: "firmado", signed_at: new Date().toISOString() } : prev)
-    toast.success("Contrato marcado como firmado")
-    setSavingContract(false)
+    if (!signForm.name.trim()) { toast.error("Indica el nombre del firmante"); return }
+    setSigning(true)
+    const { data, error } = await sendForSignature(contract.id, event.id, { signerName: signForm.name, signerEmail: signForm.email })
+    if (error || !data) { toast.error(error ?? "Error"); setSigning(false); return }
+    setContract(data as unknown as Contract)
+    setSendSignOpen(false)
+    setSigning(false)
+    toast.success("Contrato enviado a firma")
+  }
+
+  async function handleSignMock() {
+    if (!contract) return
+    setSigning(true)
+    const { data, error } = await signContractMock(contract.id, event.id)
+    if (error || !data) { toast.error(error ?? "Error"); setSigning(false); return }
+    setContract(data as unknown as Contract)
+    setSigning(false)
+    toast.success("Contrato firmado · constancia NOM-151 emitida")
+  }
+
+  async function handleResetSignature() {
+    if (!contract) return
+    setSigning(true)
+    const { data, error } = await resetSignature(contract.id, event.id)
+    if (error || !data) { toast.error(error ?? "Error"); setSigning(false); return }
+    setContract(data as unknown as Contract)
+    setSigning(false)
+    toast.success("Firma reiniciada")
   }
 
   // ── payments ──────────────────────────────────────────────────────────────
@@ -1364,41 +1405,130 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Contract status */}
-              <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                <div className="flex items-center gap-3">
-                  <span className={`status-pill ${contract.status === "firmado" ? "pill-active" : "pill-draft"}`}>
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: "currentColor" }} />
-                    {contract.status === "firmado" ? "Firmado" : "Borrador"}
-                  </span>
-                  {contract.signed_at && (
-                    <span className="text-xs font-sans text-muted-foreground">
-                      Firmado el {formatDate(contract.signed_at.slice(0, 10))}
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  {contract.status !== "firmado" && (
-                    <Button size="sm" className="font-sans text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={signContract} disabled={savingContract}>
-                      <Check size={13} className="mr-1" /> Marcar como firmado
-                    </Button>
-                  )}
-                  <a
-                    href={`/api/pdf/contract/${contract.id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 h-7 rounded-md border border-border bg-background px-2.5 text-xs font-sans text-foreground hover:bg-muted hover:border-gold/40 transition-colors"
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    PDF
-                  </a>
-                  <EmailButton
-                    action="contract"
-                    id={contract.id}
-                    label="Enviar al cliente"
-                  />
-                </div>
-              </div>
+              {/* ── Firma digital (mock) ─────────────────────────────────────── */}
+              {(() => {
+                const sigStatus = contract.status === "firmado" ? "firmado" : contract.status === "enviado" ? "enviado" : "borrador"
+                const steps = [
+                  { key: "borrador", label: "Borrador", icon: FileText },
+                  { key: "enviado", label: "Enviado a firma", icon: Send },
+                  { key: "firmado", label: "Firmado", icon: ShieldCheck },
+                ] as const
+                const curIdx = steps.findIndex((s) => s.key === sigStatus)
+                const audit = contract.signature_audit ?? []
+                return (
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    {/* Encabezado del panel */}
+                    <div className="flex items-center justify-between gap-3 px-4 py-2.5 flex-wrap" style={{ background: "var(--surface-2, #F4F4F5)" }}>
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck size={15} style={{ color: "#2F6B4F" }} />
+                        <span className="font-sans text-sm font-semibold" style={{ color: "var(--text-1)" }}>Firma digital</span>
+                        <span className="text-[10px] font-sans px-1.5 py-0.5 rounded" style={{ color: "#8B6D24", background: "rgb(196 150 59 / 0.14)" }} title="Flujo simulado para demostración">Demo · Mifiel</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <a href={`/api/pdf/contract/${contract.id}`} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 h-7 rounded-md border border-border bg-background px-2.5 text-xs font-sans text-foreground hover:bg-muted hover:border-gold/40 transition-colors">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                          PDF
+                        </a>
+                        <EmailButton action="contract" id={contract.id} label="Enviar al cliente" />
+                      </div>
+                    </div>
+
+                    {/* Stepper */}
+                    <div className="flex items-center gap-1 px-4 py-3 border-b border-border">
+                      {steps.map((s, i) => {
+                        const done = i < curIdx, current = i === curIdx
+                        const color = done || current ? "#2F6B4F" : "var(--text-3)"
+                        return (
+                          <div key={s.key} className="flex items-center gap-1 shrink-0">
+                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full" style={{ background: current ? "#2F6B4F" : done ? "rgb(47 107 79 / 0.14)" : "var(--surface-3, #EBEBEC)", color: current ? "#fff" : color }}>
+                              <s.icon size={12} />
+                            </span>
+                            <span className="font-sans" style={{ fontSize: "0.72rem", fontWeight: current ? 600 : 400, color: current || done ? "var(--text-1)" : "var(--text-3)" }}>{s.label}</span>
+                            {i < steps.length - 1 && <span className="mx-1 h-px w-5" style={{ background: i < curIdx ? "#2F6B4F" : "var(--border-def)" }} />}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    <div className="p-4 space-y-4">
+                      {/* Acciones por estado */}
+                      {sigStatus === "borrador" && (
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <p className="text-sm font-sans text-muted-foreground">Envía el contrato al cliente para que lo firme en línea.</p>
+                          <Button size="sm" className="font-sans text-xs bg-[#2D2926] hover:bg-[#1A1714] text-white" onClick={openSendForSignature} disabled={signing}>
+                            <Send size={13} className="mr-1" /> Enviar a firmar
+                          </Button>
+                        </div>
+                      )}
+
+                      {sigStatus === "enviado" && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 rounded-md px-3 py-2" style={{ background: "rgb(196 150 59 / 0.08)" }}>
+                            <Clock size={14} style={{ color: "#8B6D24" }} />
+                            <p className="text-sm font-sans" style={{ color: "var(--text-2)" }}>
+                              Esperando la firma de <span className="font-medium" style={{ color: "var(--text-1)" }}>{contract.signer_name ?? "el cliente"}</span>
+                              {contract.signer_email ? ` · ${contract.signer_email}` : ""}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Button size="sm" className="font-sans text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleSignMock} disabled={signing}>
+                              <Check size={13} className="mr-1" /> Simular firma del cliente
+                            </Button>
+                            <Button size="sm" variant="outline" className="font-sans text-xs" onClick={handleResetSignature} disabled={signing}>
+                              <RotateCcw size={12} className="mr-1" /> Cancelar
+                            </Button>
+                            <span className="text-[11px] font-sans text-muted-foreground">El cliente recibiría un enlace seguro para firmar desde su celular.</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {sigStatus === "firmado" && (
+                        <div className="space-y-3">
+                          {/* Constancia NOM-151 */}
+                          <div className="rounded-lg border p-4" style={{ borderColor: "rgb(47 107 79 / 0.3)", background: "rgb(47 107 79 / 0.04)" }}>
+                            <div className="flex items-center gap-2 mb-3">
+                              <ShieldCheck size={16} style={{ color: "#2F6B4F" }} />
+                              <p className="font-sans text-sm font-semibold" style={{ color: "#2F6B4F" }}>Firmado · Constancia de conservación NOM-151</p>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                              {[
+                                ["Firmante", contract.signer_name ?? "—"],
+                                ["Fecha y hora", contract.signed_at ? formatDate(contract.signed_at.slice(0, 10)) + " · " + new Date(contract.signed_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) : "—"],
+                                ["Folio NOM-151", contract.nom151_folio ?? "—"],
+                                ["Sello de integridad", contract.signature_hash ?? "—"],
+                              ].map(([k, v]) => (
+                                <div key={k}>
+                                  <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.56rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-3)" }}>{k}</p>
+                                  <p className="mono-data truncate" style={{ fontSize: "0.78rem", color: "var(--text-1)" }} title={v}>{v}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          {/* Rastro de auditoría */}
+                          {audit.length > 0 && (
+                            <div className="rounded-lg border border-border p-3">
+                              <p style={{ fontFamily: "var(--font-mono)", fontSize: "0.58rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-3)", marginBottom: "0.5rem" }}>Rastro de auditoría</p>
+                              <div className="space-y-1.5">
+                                {audit.map((a, i) => (
+                                  <div key={i} className="flex items-start gap-2 text-xs font-sans">
+                                    <Check size={12} className="mt-0.5 shrink-0" style={{ color: "#2F6B4F" }} />
+                                    <span style={{ color: "var(--text-2)" }} className="flex-1">{a.event}</span>
+                                    <span className="mono-data shrink-0" style={{ color: "var(--text-3)", fontSize: "0.68rem" }}>{new Date(a.at).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <button onClick={handleResetSignature} disabled={signing} className="text-xs font-sans text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1">
+                            <RotateCcw size={11} /> Reiniciar firma (demo)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Clauses editor */}
               <div className="space-y-3">
@@ -2106,6 +2236,35 @@ export function EventDetail({ event: initial, quote: initialQuote, contract: ini
             <Button variant="outline" onClick={() => setTastingOpen(false)} className="font-sans">Cancelar</Button>
             <Button onClick={saveTasting} disabled={savingTasting} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
               {savingTasting ? "Guardando…" : editingTasting ? "Guardar" : "Agregar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send for signature dialog (mock) */}
+      <Dialog open={sendSignOpen} onOpenChange={setSendSignOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Enviar a firmar</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs font-sans text-muted-foreground">
+              Se enviará un enlace de firma al cliente. Al firmar, se generará la constancia de
+              conservación NOM-151. <span className="font-medium" style={{ color: "#8B6D24" }}>Demo: el flujo está simulado.</span>
+            </p>
+            <div className="space-y-1.5">
+              <Label className="font-sans">Nombre del firmante *</Label>
+              <Input value={signForm.name} onChange={(e) => setSignForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nombre del cliente" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-sans">Correo (opcional)</Label>
+              <Input type="email" value={signForm.email} onChange={(e) => setSignForm((f) => ({ ...f, email: e.target.value }))} placeholder="correo@cliente.com" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendSignOpen(false)} className="font-sans">Cancelar</Button>
+            <Button onClick={handleSendForSignature} disabled={signing} className="bg-[#2D2926] hover:bg-[#1A1714] text-white font-sans font-medium">
+              {signing ? "Enviando…" : "Enviar a firmar"}
             </Button>
           </DialogFooter>
         </DialogContent>

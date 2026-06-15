@@ -1017,6 +1017,12 @@ export type Database = {
           status: string
           signed_at: string | null
           notes: string | null
+          signature_provider: string | null
+          signer_name: string | null
+          signer_email: string | null
+          nom151_folio: string | null
+          signature_hash: string | null
+          signature_audit: unknown[]
           created_at: string
           updated_at: string
         }
@@ -1028,6 +1034,12 @@ export type Database = {
           status?: string
           signed_at?: string | null
           notes?: string | null
+          signature_provider?: string | null
+          signer_name?: string | null
+          signer_email?: string | null
+          nom151_folio?: string | null
+          signature_hash?: string | null
+          signature_audit?: unknown[]
           created_at?: string
           updated_at?: string
         }
@@ -1039,6 +1051,12 @@ export type Database = {
           status?: string
           signed_at?: string | null
           notes?: string | null
+          signature_provider?: string | null
+          signer_name?: string | null
+          signer_email?: string | null
+          nom151_folio?: string | null
+          signature_hash?: string | null
+          signature_audit?: unknown[]
           created_at?: string
           updated_at?: string
         }
